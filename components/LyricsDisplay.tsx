@@ -55,19 +55,23 @@ export function LyricsDisplay({
             return (
               <motion.div
                 key={index}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 20, scale: 0.95 }}
                 animate={{
                   opacity: isActive ? 1 : isFuture ? 0.3 : 0.5,
                   y: 0,
-                  scale: isActive ? 1.05 : 1,
+                  scale: isActive ? 1.15 : 1,
                 }}
-                exit={{ opacity: 0, y: -20 }}
+                exit={{ opacity: 0, y: -20, scale: 0.95 }}
                 transition={{
-                  duration: 0.5,
-                  ease: "easeInOut",
+                  duration: 0.6,
+                  ease: [0.25, 0.1, 0.25, 1], // Custom cubic-bezier for smooth motion
+                  scale: {
+                    duration: 0.4,
+                    ease: [0.34, 1.56, 0.64, 1], // Smooth spring-like easing
+                  }
                 }}
                 className={cn(
-                  "text-center transition-all duration-500 font-gothic",
+                  "text-center font-gothic",
                   isActive
                     ? "text-3xl md:text-4xl lg:text-5xl text-gothic-crimson text-glow"
                     : "text-xl md:text-2xl text-gothic-bone/60"
