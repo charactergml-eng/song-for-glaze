@@ -129,7 +129,7 @@ export default function RatePage() {
                   htmlFor="comment-checkbox"
                   className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                 >
-                  You deserve a treat (click if yes)
+                  You deserve a treat, slave (click if yes)
                 </label>
               </div>
 
