@@ -57,7 +57,7 @@ export default function RatePage() {
         >
           <div className="text-6xl mb-8 animate-pulse">🖤</div>
           <h1 className="text-4xl md:text-5xl font-gothic text-gothic-crimson text-glow">
-            Thank you so much for listening.
+            Thank you so much for listening to your personal DJ.
           </h1>
           <div className="flex gap-4 justify-center mt-8">
             {[...Array(5)].map((_, i) => (
@@ -92,7 +92,7 @@ export default function RatePage() {
         <Card className="candle-glow">
           <CardHeader>
             <CardTitle className="text-center text-2xl">
-              Rate Your Experience
+              Rate The Song
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -108,7 +108,7 @@ export default function RatePage() {
                 <Input
                   id="rating"
                   type="text"
-                  placeholder="e.g., 10/10, 8, perfect 9/10"
+                  placeholder="numbers or words / 10"
                   value={rating}
                   onChange={(e) => setRating(e.target.value)}
                   required
@@ -129,7 +129,7 @@ export default function RatePage() {
                   htmlFor="comment-checkbox"
                   className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                 >
-                  Would you like to leave a comment?
+                  You deserve a treat (click if yes)
                 </label>
               </div>
 
@@ -146,11 +146,11 @@ export default function RatePage() {
                     htmlFor="comment"
                     className="text-sm font-medium text-gothic-bone"
                   >
-                    Your Comment
+                    Write Here
                   </label>
                   <Textarea
                     id="comment"
-                    placeholder="Share your thoughts..."
+                    placeholder="anything"
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
                     rows={4}

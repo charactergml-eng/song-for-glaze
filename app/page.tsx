@@ -102,7 +102,7 @@ const timestamps = [
   58,
   60,
   61,
-  62,
+  63,
   64,
   65,
   67,
@@ -110,7 +110,6 @@ const timestamps = [
   71,
   72,
   74,
-  76,
   78,
   81,
   85,
@@ -143,7 +142,8 @@ const timestamps = [
   138,
   141,
   147,
-  150
+  150,
+  151
 ];
 
 export default function Home() {
