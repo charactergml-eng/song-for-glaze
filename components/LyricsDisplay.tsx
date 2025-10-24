@@ -36,8 +36,8 @@ export function LyricsDisplay({
 
   return (
     <div className="w-full max-w-3xl mx-auto min-h-[400px] flex flex-col items-center justify-center py-8 px-4">
-      <div className="space-y-6 w-full">
-        <AnimatePresence>
+      <div className="relative w-full h-[500px]">
+        <AnimatePresence mode="popLayout">
           {activeLyricIndex !== -1 && lyrics.map((lyric, index) => {
             const isActive = index === activeLyricIndex;
             const isPast = index < activeLyricIndex;
@@ -52,29 +52,51 @@ export function LyricsDisplay({
 
             if (!shouldShow) return null;
 
+            // Calculate position relative to active lyric
+            const relativePosition = index - activeLyricIndex;
+            const yPosition = relativePosition * 120; // 120px gap between lyrics
+
             return (
               <motion.div
                 key={index}
-                initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                layout
+                initial={{ opacity: 0, scale: 0.95 }}
                 animate={{
                   opacity: isActive ? 1 : isFuture ? 0.3 : 0.5,
-                  y: 0,
-                  scale: isActive ? 1.15 : 1,
+                  y: yPosition,
+                  scale: isActive ? 1.2 : 0.85,
                 }}
-                exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                exit={{ opacity: 0, scale: 0.95 }}
                 transition={{
-                  duration: 0.6,
-                  ease: [0.25, 0.1, 0.25, 1], // Custom cubic-bezier for smooth motion
+                  layout: {
+                    duration: 0.5,
+                    ease: [0.25, 0.1, 0.25, 1],
+                  },
+                  opacity: {
+                    duration: 0.4,
+                  },
                   scale: {
                     duration: 0.4,
-                    ease: [0.34, 1.56, 0.64, 1], // Smooth spring-like easing
+                    ease: [0.34, 1.56, 0.64, 1],
+                  },
+                  y: {
+                    duration: 0.5,
+                    ease: [0.25, 0.1, 0.25, 1],
                   }
                 }}
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '0',
+                  right: '0',
+                  transformOrigin: 'center center',
+                  willChange: 'transform, opacity'
+                }}
                 className={cn(
-                  "text-center font-gothic",
+                  "text-center font-gothic text-3xl md:text-4xl lg:text-5xl w-full flex items-center justify-center",
                   isActive
-                    ? "text-3xl md:text-4xl lg:text-5xl text-gothic-crimson text-glow"
-                    : "text-xl md:text-2xl text-gothic-bone/60"
+                    ? "text-gothic-crimson text-glow"
+                    : "text-gothic-bone/60"
                 )}
               >
                 {lyric}
@@ -87,7 +109,7 @@ export function LyricsDisplay({
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="text-center text-2xl text-gothic-bone/40 font-gothic"
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center text-2xl text-gothic-bone/40 font-gothic"
           >
             Press play to begin...
           </motion.div>
