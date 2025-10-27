@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Gothic Lyrics Player",
-  description: "A dark, gothic-themed lyrics player",
+  title: "Submit a Song Idea",
+  description: "Share your creative song ideas with us",
 };
 
 export default function RootLayout({

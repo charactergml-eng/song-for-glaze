@@ -1,201 +1,129 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { AudioPlayer } from "@/components/AudioPlayer";
-import { LyricsDisplay } from "@/components/LyricsDisplay";
-
-// Sample data - replace with your actual lyrics and timestamps
-const lyrics = [
-  "[Intro]", 
-  "my homie you went thru a lot in this matrix", 
-  "you deserve good words and lots of glazin’", 
-  "you should be proud of yourself", 
-  "self dependant and so amazing", 
-  "the best at your job", 
-  "your grinding never stops", 
-  "inspiration for the people around you", 
-  "homie you really a star", 
-  "you’re so good what you do", 
-  "they offered you royalty treatment", 
-  "that alone is a proof", 
-  "that you have no signs of weakness",
-  "you’re a source of power", 
-  "patience and pride", 
-  "i’m really proud of you homie", 
-  "and i’d say that in every other life",
-  "Who really is the best?", 
-  "Goddess Batoul", 
-  "Who does the most reps?", 
-  "Goddess Batoul",
-  "Who got them all jealous?", 
-  "Goddess Batoul",
-  "You know who to worship?",
-  "Goddess Batoul", 
-  "Who really is the best?",
-  "Goddess Batoul", 
-  "Who does the most reps?", 
-  "Goddess Batoul",
-  "Who got them all jealous?", 
-  "Goddess Batoul",
-  "You know who to worship?",
-  "Goddess Batoul",
-  "There’s men that are too pussy to live like you",
-  "There’s men that still ask their mom to wipe their poop",
-  "There’s men too afraid of responsibilities",
-  "but you over here showing superhero abilities",
-  "I mean you have your boss on his knees", 
-  "So who’s the real boss here?", 
-  "we are all beneath your feet",
-  "That Ana enta meme is really real", 
-  "and when we make a sitting", 
-  "as soon as you open the door", 
-  "and only with your permission",
-  "you’ll see me bow down to the floor", 
-  "Because that’s the bare minimum",
-  "Who really is the best?",
-  "Goddess Batoul", 
-  "Who does the most reps?", 
-  "Goddess Batoul",
-  "Who got them all jealous?",
-  "Goddess Batoul", 
-  "You know who to worship?", 
-  "Goddess Batoul", 
-  "Who really is the best?",
-  "Goddess Batoul",
-  "Who does the most reps?", 
-  "Goddess Batoul",
-  "Who got them all jealous?",
-  "Goddess Batoul",
-  "You know who to worship?",
-  "Goddess Batoul",
-  "I be glazing I be glazing I be glazing",
-  "I be glazing I be glazing I be glazing", 
-  "Batoul glaze day", 
-  "Batoul glaze day is every day", 
-  "hey hey hey hey heyyyyyyyyyyy"
-]
-
-const timestamps = [
-  0, 
-  14,
-  17, 
-  21,
-  23,
-  27, 
-  29, 
-  31, 
-  32,
-  34,
-  36,
-  38,
-  40,
-  42,
-  44,
-  45,
-  47,
-  50,
-  51,
-  53,
-  54,
-  56,
-  58,
-  60,
-  61,
-  63,
-  64,
-  65,
-  67,
-  68,
-  71,
-  72,
-  74,
-  78,
-  81,
-  85,
-  87,
-  91,
-  94,
-  96,
-  97,
-  100,
-  101,
-  103,
-  105,
-  107,
-  110,
-  111,
-  113,
-  114,
-  117,
-  118,
-  120,
-  121,
-  123,
-  125,
-  127,
-  129,
-  131,
-  132,
-  134,
-  136,
-  138,
-  141,
-  147,
-  150,
-  151
-];
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { motion } from "framer-motion";
+import emailjs from "@emailjs/browser";
 
 export default function Home() {
-  const router = useRouter();
-  const [currentTime, setCurrentTime] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [songIdea, setSongIdea] = useState("");
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleSongEnd = () => {
-    // Navigate to rating page when song ends
-    router.push("/rate");
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setError("");
+
+    try {
+      // Initialize EmailJS with your public key
+      emailjs.init(process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY || "");
+
+      // Send email using EmailJS
+      await emailjs.send(
+        process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID || "",
+        process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID || "",
+        {
+          rating: songIdea,
+          to_email: process.env.NEXT_PUBLIC_EMAIL_TO || "",
+        }
+      );
+
+      setIsSubmitted(true);
+      setSongIdea("");
+    } catch (err) {
+      console.error("Failed to send email:", err);
+      setError("Failed to submit. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  if (isSubmitted) {
+    return (
+      <main className="min-h-screen flex flex-col items-center justify-center p-8">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.6 }}
+          className="text-center space-y-6"
+        >
+          <div className="text-6xl mb-8 animate-pulse">🎵</div>
+          <h1 className="text-4xl md:text-5xl font-gothic text-gothic-crimson text-glow">
+            GREAT IDEA! Your slave has started working on it!
+          </h1>
+          <Button
+            onClick={() => setIsSubmitted(false)}
+            className="mt-8 text-lg font-gothic"
+          >
+            Submit Another Idea
+          </Button>
+          <div className="flex gap-4 justify-center mt-8">
+            {[...Array(5)].map((_, i) => (
+              <div
+                key={i}
+                className="w-2 h-8 bg-gothic-bloodRed rounded-full animate-candle-flicker candle-glow"
+                style={{ animationDelay: `${i * 0.2}s` }}
+              />
+            ))}
+          </div>
+        </motion.div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center p-8">
-      {/* Decorative header */}
-      <div className="mb-12 text-center">
-        <h1 className="text-5xl md:text-6xl font-gothic text-gothic-crimson text-glow mb-2 animate-candle-flicker">
-          Song for Glaze
-        </h1>
-        <div className="h-px w-48 mx-auto bg-gradient-to-r from-transparent via-gothic-bloodRed to-transparent" />
-      </div>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className="w-full max-w-lg"
+      >
 
-      {/* Lyrics Display */}
-      <LyricsDisplay
-        lyrics={lyrics}
-        timestamps={timestamps}
-        currentTime={currentTime}
-        isPlaying={isPlaying}
-      />
+        <Card className="candle-glow">
+          <CardHeader>
+            <CardTitle className="text-center text-2xl">
+              Share Your Song Idea
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Song Idea Textarea */}
+              <div className="space-y-2">
+                <Textarea
+                  id="songIdea"
+                  placeholder="Write here..."
+                  value={songIdea}
+                  onChange={(e) => setSongIdea(e.target.value)}
+                  required
+                  rows={8}
+                  className="resize-none text-lg"
+                />
+              </div>
 
-      {/* Audio Player */}
-      <div className="mt-12 w-full">
-        <AudioPlayer
-          audioSrc="/audio/song.mp3"
-          onTimeUpdate={setCurrentTime}
-          onEnded={handleSongEnd}
-          onPlayStateChange={setIsPlaying}
-        />
-      </div>
+              {/* Error Message */}
+              {error && (
+                <div className="text-gothic-crimson text-sm text-center">
+                  {error}
+                </div>
+              )}
 
-      {/* Decorative footer */}
-      <div className="mt-12">
-        <div className="flex gap-4 justify-center">
-          {[...Array(3)].map((_, i) => (
-            <div
-              key={i}
-              className="w-2 h-8 bg-gothic-bloodRed rounded-full animate-candle-flicker candle-glow"
-              style={{ animationDelay: `${i * 0.3}s` }}
-            />
-          ))}
-        </div>
-      </div>
+              {/* Submit Button */}
+              <Button
+                type="submit"
+                className="w-full text-lg font-gothic"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Submitting..." : "DO IT NOW!"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </motion.div>
     </main>
   );
 }
