@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { promises as fs } from 'fs';
-import path from 'path';
+import { put, list } from '@vercel/blob';
 
-const DATA_FILE = path.join(process.cwd(), 'data', 'affirmations.json');
+const BLOB_FILENAME = 'affirmations.json';
 
 // Type for affirmations data
 interface AffirmationsData {
@@ -10,36 +9,37 @@ interface AffirmationsData {
   player2_to_player1?: string;
 }
 
-// Ensure data directory and file exist
-async function ensureDataFile(): Promise<void> {
-  const dataDir = path.join(process.cwd(), 'data');
-
+// Get existing data from blob or return empty object
+async function getAffirmationsData(): Promise<AffirmationsData> {
   try {
-    await fs.access(dataDir);
-  } catch {
-    await fs.mkdir(dataDir, { recursive: true });
+    // List all blobs and find our affirmations file
+    const { blobs } = await list();
+    const affirmationsBlob = blobs.find(blob => blob.pathname === BLOB_FILENAME);
+
+    if (affirmationsBlob) {
+      // Fetch the blob content
+      const response = await fetch(affirmationsBlob.url);
+      if (response.ok) {
+        return await response.json();
+      }
+    }
+  } catch (error) {
+    console.log('No existing blob found, returning empty data:', error);
   }
 
-  try {
-    await fs.access(DATA_FILE);
-  } catch {
-    // Create empty affirmations file
-    await fs.writeFile(DATA_FILE, JSON.stringify({}, null, 2));
-  }
+  return {};
 }
 
 // GET: Read affirmations
 export async function GET() {
   try {
-    await ensureDataFile();
-    const fileContent = await fs.readFile(DATA_FILE, 'utf-8');
-    const data: AffirmationsData = JSON.parse(fileContent);
-
+    const data = await getAffirmationsData();
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Error reading affirmations:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('Error reading affirmations:', errorMessage, error);
     return NextResponse.json(
-      { error: 'Failed to read affirmations' },
+      { error: `Failed to read affirmations: ${errorMessage}` },
       { status: 500 }
     );
   }
@@ -48,8 +48,6 @@ export async function GET() {
 // POST: Write/update affirmation
 export async function POST(request: NextRequest) {
   try {
-    await ensureDataFile();
-
     const body = await request.json();
     const { player, message } = body;
 
@@ -69,21 +67,24 @@ export async function POST(request: NextRequest) {
     }
 
     // Read existing data
-    const fileContent = await fs.readFile(DATA_FILE, 'utf-8');
-    const data: AffirmationsData = JSON.parse(fileContent);
+    const data = await getAffirmationsData();
 
     // Update the appropriate field
     const key = player === 'player1' ? 'player1_to_player2' : 'player2_to_player1';
     data[key] = message;
 
-    // Write back to file
-    await fs.writeFile(DATA_FILE, JSON.stringify(data, null, 2));
+    // Write to Vercel Blob
+    await put(BLOB_FILENAME, JSON.stringify(data, null, 2), {
+      access: 'public',
+      contentType: 'application/json',
+      allowOverwrite: true
+    });
 
     return NextResponse.json({ success: true, data });
   } catch (error) {
     console.error('Error writing affirmation:', error);
     return NextResponse.json(
-      { error: 'Failed to save affirmation' },
+      { error: `Failed to save affirmation ${error}` },
       { status: 500 }
     );
   }

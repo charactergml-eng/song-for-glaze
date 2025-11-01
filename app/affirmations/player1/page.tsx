@@ -91,7 +91,6 @@ export default function Player1() {
           transition={{ duration: 0.6 }}
           className="text-center space-y-6"
         >
-          <div className="text-6xl mb-8 animate-pulse">💝</div>
           <h1 className="text-4xl md:text-5xl font-gothic text-gothic-crimson text-glow">
             Your treat has been sent!
           </h1>
