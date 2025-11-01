@@ -32,16 +32,8 @@ export default function AffirmationsSelect() {
               onClick={() => router.push('/affirmations/player1')}
             >
               <CardHeader>
-                <div className="flex justify-center mb-4">
-                  <div className="w-[250px] h-[250px] relative overflow-hidden rounded-full">
-                    <Image
-                      src="/player-1.png"
-                      alt="Goddess"
-                      width={250}
-                      height={250}
-                      className="object-cover w-full h-full"
-                    />
-                  </div>
+                <div className="flex justify-center mb-4 text-6xl">
+                    👸
                 </div>
                 <CardTitle className="text-center text-2xl">
                   Goddess
@@ -66,16 +58,8 @@ export default function AffirmationsSelect() {
               onClick={() => router.push('/affirmations/player2')}
             >
               <CardHeader>
-                <div className="flex justify-center mb-4">
-                  <div className="w-[250px] h-[250px] relative overflow-hidden rounded-full">
-                    <Image
-                      src="/player-2.jpg"
-                      alt="Slave"
-                      width={250}
-                      height={250}
-                      className="object-cover w-full h-full"
-                    />
-                  </div>
+                <div className="flex justify-center mb-4 text-6xl">
+                    🧎‍♂️
                 </div>
                 <CardTitle className="text-center text-2xl">
                   Slave
