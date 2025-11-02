@@ -20,7 +20,7 @@ export default function Home() {
           Choose Your Path
         </h1>
 
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* Affirmations Card */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -76,6 +76,26 @@ export default function Home() {
               <CardContent>
                 <p className="text-center text-muted-foreground">
                   Watch the exclusive music video
+                </p>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Chat Card */}
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6, delay: 0.8 }}
+          >
+            <Card className="candle-glow h-full cursor-pointer hover:scale-105 transition-transform" onClick={() => router.push('/chat')}>
+              <CardHeader>
+                <CardTitle className="text-center text-2xl">
+                  Real-Time Chat
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-center text-muted-foreground">
+                  Chat with Player 1 or Player 2
                 </p>
               </CardContent>
             </Card>
