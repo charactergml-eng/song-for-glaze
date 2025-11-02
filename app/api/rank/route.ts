@@ -72,7 +72,8 @@ export async function POST(request: NextRequest) {
     await put(BLOB_FILENAME, JSON.stringify(data, null, 2), {
       access: 'public',
       contentType: 'application/json',
-      addRandomSuffix: false
+      addRandomSuffix: false,
+      allowOverwrite: true
     });
 
     return NextResponse.json({ success: true, data });

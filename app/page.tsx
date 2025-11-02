@@ -1,7 +1,6 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
@@ -9,6 +8,7 @@ import { useState, useEffect } from "react";
 export default function Home() {
   const router = useRouter();
   const [slaveRank, setSlaveRank] = useState<string>("slave");
+  const [kingdomRules, setKingdomRules] = useState<string>("");
 
   // Load rank from blob on mount
   useEffect(() => {
@@ -26,6 +26,24 @@ export default function Home() {
     loadRank();
   }, []);
 
+  // Load rules on mount
+  useEffect(() => {
+    const loadRules = async () => {
+      try {
+        const response = await fetch('/api/kingdom-rules');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.rules && data.rules.trim()) {
+            setKingdomRules(data.rules);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load rules:', error);
+      }
+    };
+    loadRules();
+  }, []);
+
   return (
     <main className="min-h-screen flex flex-col items-center justify-center p-8">
       <h1 className="text-4xl md:text-5xl font-gothic text-gothic-crimson text-glow text-center mb-4">Welcome to Goddess Batoul's Kingdom</h1>
@@ -34,6 +52,31 @@ export default function Home() {
           and under her command: <span className="text-gothic-crimson font-bold">{slaveRank}</span>
         </p>
       </div>
+
+      {/* Kingdom Rules Display */}
+      {kingdomRules && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="w-full max-w-2xl mb-8"
+        >
+          <Card className="candle-glow border-gothic-crimson border-2">
+            <CardHeader>
+              <CardTitle className="text-center text-3xl text-gothic-crimson text-glow">
+                Daily Reminder of Rules
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="bg-gothic-darkGray/50 p-6 rounded-lg">
+                <p className="text-gothic-bone whitespace-pre-wrap text-lg leading-relaxed">
+                  {kingdomRules}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -44,7 +87,7 @@ export default function Home() {
           Choose Your Path
         </h1>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
           {/* Affirmations Card */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -120,6 +163,26 @@ export default function Home() {
               <CardContent>
                 <p className="text-center text-muted-foreground">
                   Chat
+                </p>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Kingdom Rules Card */}
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6, delay: 1.0 }}
+          >
+            <Card className="candle-glow h-full cursor-pointer hover:scale-105 transition-transform" onClick={() => router.push('/kingdom-rules')}>
+              <CardHeader>
+                <CardTitle className="text-center text-2xl">
+                  Kingdom Rules
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-center text-muted-foreground">
+                  Set the kingdom rules
                 </p>
               </CardContent>
             </Card>
