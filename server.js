@@ -38,16 +38,40 @@ app.prepare().then(() => {
     slave: false
   };
 
+  // Track all connected visitors (sockets)
+  const connectedVisitors = new Set();
+
+  const broadcastVisitorCount = () => {
+    const count = connectedVisitors.size;
+    io.emit('visitor-count', count);
+    console.log(`Broadcasting visitor count: ${count}`);
+  };
+
   io.on('connection', (socket) => {
     console.log('Client connected:', socket.id);
+
+    // Add visitor immediately on connection
+    connectedVisitors.add(socket.id);
+    console.log(`New connection: ${socket.id}, Total visitors: ${connectedVisitors.size}`);
+
+    // Send current visitor count to the new client
+    socket.emit('visitor-count', connectedVisitors.size);
+
+    // Broadcast to all clients
+    broadcastVisitorCount();
 
     // Send existing messages to new client
     socket.emit('load-messages', messages);
 
-    // Send current online status
+    // Send current online status for chat players
     socket.emit('online-status', onlinePlayers);
 
-    // Handle player identification
+    // Handle general visitor connection (optional now, as we add on connection)
+    socket.on('visitor-connected', () => {
+      console.log(`Visitor-connected event from: ${socket.id}`);
+    });
+
+    // Handle player identification (for chat)
     socket.on('identify-player', (player) => {
       socket.player = player;
       onlinePlayers[player] = true;
@@ -62,8 +86,22 @@ app.prepare().then(() => {
       io.emit('new-message', message);
     });
 
+    socket.on('typing', (player) => {
+      // Broadcast to all clients that this player is typing
+      io.emit('user-typing', player);
+    });
+
+    socket.on('stopped-typing', (player) => {
+      // Broadcast to all clients that this player stopped typing
+      io.emit('user-stopped-typing', player);
+    });
+
     socket.on('disconnect', () => {
       console.log('Client disconnected:', socket.id);
+
+      // Remove from visitors
+      connectedVisitors.delete(socket.id);
+      broadcastVisitorCount();
 
       // Update online status when player disconnects
       if (socket.player) {
