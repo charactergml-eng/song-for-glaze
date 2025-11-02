@@ -133,7 +133,7 @@ export default function ChatPage() {
         const rankChangeMessage: Message = {
           id: Date.now().toString(),
           player: selectedPlayer,
-          content: `Player 2 has been demoted to ${newRank}`,
+          content: `Goddess has been demoted sub to ${newRank}`,
           timestamp: Date.now(),
           type: 'rank-change',
           rankChange: {
