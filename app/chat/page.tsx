@@ -13,14 +13,14 @@ type CommandStep = 'none' | 'action' | 'player' | 'count';
 
 interface ActionCommand {
   action: string;
-  targetPlayer: 'player1' | 'player2' | null;
+  targetPlayer: 'Goddess' | 'slave' | null;
   count: string;
   unit: string;
 }
 
 export default function ChatPage() {
   const router = useRouter();
-  const [selectedPlayer, setSelectedPlayer] = useState<'player1' | 'player2' | null>(null);
+  const [selectedPlayer, setSelectedPlayer] = useState<'Goddess' | 'slave' | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [commandStep, setCommandStep] = useState<CommandStep>('none');
@@ -31,8 +31,25 @@ export default function ChatPage() {
     unit: ''
   });
   const [isConnected, setIsConnected] = useState(false);
+  const [slaveRank, setSlaveRank] = useState<string>("slave");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const socketRef = useRef<ReturnType<typeof getSocket> | null>(null);
+
+  // Load rank from blob on mount
+  useEffect(() => {
+    const loadRank = async () => {
+      try {
+        const response = await fetch('/api/rank');
+        if (response.ok) {
+          const data = await response.json();
+          setSlaveRank(data.rank || 'slave');
+        }
+      } catch (error) {
+        console.error('Failed to load rank:', error);
+      }
+    };
+    loadRank();
+  }, []);
 
   useEffect(() => {
     if (selectedPlayer) {
@@ -52,6 +69,27 @@ export default function ChatPage() {
 
       socketRef.current.on('new-message', (message: Message) => {
         setMessages((prev) => [...prev, message]);
+
+        // Update slave rank if this is a rank change message
+        if (message.type === 'rank-change' && message.rankChange) {
+          setSlaveRank(message.rankChange.newRank);
+          // Save to blob
+          fetch('/api/rank', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rank: message.rankChange.newRank })
+          }).catch(err => console.error('Failed to save rank:', err));
+        }
+      });
+
+      socketRef.current.on('rank-update', (newRank: string) => {
+        setSlaveRank(newRank);
+        // Save to blob
+        fetch('/api/rank', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rank: newRank })
+        }).catch(err => console.error('Failed to save rank:', err));
       });
 
       return () => {
@@ -66,6 +104,48 @@ export default function ChatPage() {
 
   const handleSendMessage = () => {
     if (!inputValue.trim() || !selectedPlayer || !socketRef.current) return;
+
+    // Check for promote/demote commands (only for Goddess)
+    if (selectedPlayer === 'Goddess') {
+      const promoteMatch = inputValue.match(/^\/promote\s+(.+)$/i);
+      const demoteMatch = inputValue.match(/^\/demote\s+(.+)$/i);
+
+      if (promoteMatch) {
+        const newRank = promoteMatch[1].trim();
+        const rankChangeMessage: Message = {
+          id: Date.now().toString(),
+          player: selectedPlayer,
+          content: `Player 2 has been promoted to ${newRank}`,
+          timestamp: Date.now(),
+          type: 'rank-change',
+          rankChange: {
+            oldRank: slaveRank,
+            newRank: newRank
+          }
+        };
+        socketRef.current.emit('send-message', rankChangeMessage);
+        setInputValue('');
+        return;
+      }
+
+      if (demoteMatch) {
+        const newRank = demoteMatch[1].trim();
+        const rankChangeMessage: Message = {
+          id: Date.now().toString(),
+          player: selectedPlayer,
+          content: `Player 2 has been demoted to ${newRank}`,
+          timestamp: Date.now(),
+          type: 'rank-change',
+          rankChange: {
+            oldRank: slaveRank,
+            newRank: newRank
+          }
+        };
+        socketRef.current.emit('send-message', rankChangeMessage);
+        setInputValue('');
+        return;
+      }
+    }
 
     // Check if user is initiating an action command
     if (inputValue === '/action') {
@@ -93,8 +173,8 @@ export default function ChatPage() {
 
       // Otherwise, set the target player
       const lowerInput = inputValue.toLowerCase();
-      const targetPlayer = lowerInput.includes('player1') ? 'player1' :
-                          lowerInput.includes('player2') ? 'player2' : null;
+      const targetPlayer = lowerInput.includes('Goddess') ? 'Goddess' :
+                          lowerInput.includes('slave') ? 'slave' : null;
       setActionCommand({ ...actionCommand, targetPlayer });
       setCommandStep('count');
       setInputValue('');
@@ -264,10 +344,13 @@ export default function ChatPage() {
       case 'action':
         return 'Type the action (e.g., shoot, tickle, hug)...';
       case 'player':
-        return 'Type player1, player2, or press Enter to skip...';
+        return 'Type Goddess, slave, or press Enter to skip...';
       case 'count':
         return 'Type count and unit (e.g., "3 times", "5 minutes")...';
       default:
+        if (selectedPlayer === 'Goddess') {
+          return 'Type a message, /action, /promote <rank>, or /demote <rank>...';
+        }
         return 'Type a message or /action to perform an action...';
     }
   };
@@ -293,18 +376,13 @@ export default function ChatPage() {
             >
               <Card
                 className="candle-glow h-full cursor-pointer hover:scale-105 transition-transform"
-                onClick={() => setSelectedPlayer('player1')}
+                onClick={() => setSelectedPlayer('Goddess')}
               >
                 <CardHeader>
                   <CardTitle className="text-center text-3xl">
-                    Player 1
+                    Goddess
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-center text-muted-foreground">
-                    Join as Player 1
-                  </p>
-                </CardContent>
               </Card>
             </motion.div>
 
@@ -315,18 +393,13 @@ export default function ChatPage() {
             >
               <Card
                 className="candle-glow h-full cursor-pointer hover:scale-105 transition-transform"
-                onClick={() => setSelectedPlayer('player2')}
+                onClick={() => setSelectedPlayer('slave')}
               >
                 <CardHeader>
                   <CardTitle className="text-center text-3xl">
-                    Player 2
+                    {slaveRank}
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-center text-muted-foreground">
-                    Join as Player 2
-                  </p>
-                </CardContent>
               </Card>
             </motion.div>
           </div>
@@ -378,7 +451,7 @@ export default function ChatPage() {
               Change Player
             </Button>
             <h1 className="text-2xl md:text-3xl font-gothic text-gothic-crimson text-glow">
-              Chat Room - {selectedPlayer === 'player1' ? 'Player 1' : 'Player 2'}
+              Chat Room - {selectedPlayer === 'Goddess' ? 'Goddess' : slaveRank}
             </h1>
           </div>
           <div className={`flex items-center gap-2 ${isConnected ? 'text-green-500' : 'text-red-500'}`}>
@@ -397,13 +470,30 @@ export default function ChatPage() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className={`flex ${message.type === 'action' ? 'justify-center' : message.player === selectedPlayer ? 'justify-end' : 'justify-start'}`}
+                  className={`flex ${message.type === 'action' || message.type === 'rank-change' ? 'justify-center' : message.player === selectedPlayer ? 'justify-end' : 'justify-start'}`}
                 >
                   {message.type === 'action' ? (
                     // Action message - centered with special styling
                     <div className="flex flex-col items-center gap-1 max-w-[80%]">
                       <div className="text-gothic-crimson italic text-center break-words">
                         {message.content}
+                      </div>
+                      <div className="text-xs text-gothic-bone/40">
+                        {new Date(message.timestamp).toLocaleTimeString()}
+                      </div>
+                    </div>
+                  ) : message.type === 'rank-change' ? (
+                    // Rank change message - centered with special styling
+                    <div className="flex flex-col items-center gap-1 max-w-[80%]">
+                      <div className="bg-gothic-darkRed/50 border border-gothic-crimson rounded-lg px-4 py-2">
+                        <div className="text-gothic-crimson font-bold text-center break-words">
+                          {message.content}
+                        </div>
+                        {message.rankChange && (
+                          <div className="text-xs text-gothic-bone/60 text-center mt-1">
+                            {message.rankChange.oldRank} → {message.rankChange.newRank}
+                          </div>
+                        )}
                       </div>
                       <div className="text-xs text-gothic-bone/40">
                         {new Date(message.timestamp).toLocaleTimeString()}
@@ -419,7 +509,7 @@ export default function ChatPage() {
                       }`}
                     >
                       <div className="text-xs text-gothic-bone/60 mb-1">
-                        {message.player === 'player1' ? 'Player 1' : 'Player 2'}
+                        {message.player === 'Goddess' ? 'Goddess' : slaveRank}
                       </div>
                       <div className="text-gothic-bone break-words">
                         {message.content}

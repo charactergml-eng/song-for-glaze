@@ -12,14 +12,18 @@ export type NextApiResponseServerIO = NextApiResponse & {
 
 export interface Message {
   id: string;
-  player: 'player1' | 'player2';
+  player: 'Goddess' | 'slave';
   content: string;
   timestamp: number;
-  type: 'message' | 'action';
+  type: 'message' | 'action' | 'rank-change';
   action?: {
     type: string;
-    target: 'player1' | 'player2' | null;
+    target: 'Goddess' | 'slave' | null;
     count: string;
     unit: string;
+  };
+  rankChange?: {
+    oldRank: string;
+    newRank: string;
   };
 }

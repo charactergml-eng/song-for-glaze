@@ -4,12 +4,36 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 
 export default function Home() {
   const router = useRouter();
+  const [slaveRank, setSlaveRank] = useState<string>("slave");
+
+  // Load rank from blob on mount
+  useEffect(() => {
+    const loadRank = async () => {
+      try {
+        const response = await fetch('/api/rank');
+        if (response.ok) {
+          const data = await response.json();
+          setSlaveRank(data.rank || 'slave');
+        }
+      } catch (error) {
+        console.error('Failed to load rank:', error);
+      }
+    };
+    loadRank();
+  }, []);
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center p-8">
+      <h1 className="text-4xl md:text-5xl font-gothic text-gothic-crimson text-glow text-center mb-4">Welcome to Goddess Batoul's Kingdom</h1>
+      <div className="text-center mb-8">
+        <p className="text-gothic-bone/80 text-lg">
+          and under her command: <span className="text-gothic-crimson font-bold">{slaveRank}</span>
+        </p>
+      </div>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -95,7 +119,7 @@ export default function Home() {
               </CardHeader>
               <CardContent>
                 <p className="text-center text-muted-foreground">
-                  Chat with Player 1 or Player 2
+                  Chat
                 </p>
               </CardContent>
             </Card>

@@ -4,9 +4,27 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { useState, useEffect } from "react";
 
 export default function AffirmationsSelect() {
   const router = useRouter();
+  const [slaveRank, setSlaveRank] = useState<string>("slave");
+
+  // Load rank from blob on mount
+  useEffect(() => {
+    const loadRank = async () => {
+      try {
+        const response = await fetch('/api/rank');
+        if (response.ok) {
+          const data = await response.json();
+          setSlaveRank(data.rank || 'slave');
+        }
+      } catch (error) {
+        console.error('Failed to load rank:', error);
+      }
+    };
+    loadRank();
+  }, []);
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center p-8">
@@ -17,7 +35,7 @@ export default function AffirmationsSelect() {
         className="w-full max-w-2xl"
       >
         <h1 className="text-4xl md:text-5xl font-gothic text-gothic-crimson text-glow text-center mb-12">
-          Choose Your Player
+          Choose Your Role
         </h1>
 
         <div className="grid md:grid-cols-2 gap-8">
@@ -62,7 +80,7 @@ export default function AffirmationsSelect() {
                     🧎‍♂️
                 </div>
                 <CardTitle className="text-center text-2xl">
-                  Slave
+                  {slaveRank}
                 </CardTitle>
               </CardHeader>
               <CardContent>
