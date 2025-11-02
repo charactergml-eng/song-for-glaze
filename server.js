@@ -4,7 +4,7 @@ const next = require('next');
 const { Server } = require('socket.io');
 
 const dev = process.env.NODE_ENV !== 'production';
-const hostname = '0.0.0.0';
+const hostname = 'localhost';
 const port = parseInt(process.env.PORT || '3000', 10);
 
 const app = next({ dev, hostname, port });
@@ -33,12 +33,29 @@ app.prepare().then(() => {
   });
 
   const messages = [];
+  const onlinePlayers = {
+    Goddess: false,
+    slave: false
+  };
 
   io.on('connection', (socket) => {
     console.log('Client connected:', socket.id);
 
     // Send existing messages to new client
     socket.emit('load-messages', messages);
+
+    // Send current online status
+    socket.emit('online-status', onlinePlayers);
+
+    // Handle player identification
+    socket.on('identify-player', (player) => {
+      socket.player = player;
+      onlinePlayers[player] = true;
+      console.log(`Player ${player} is now online`);
+
+      // Broadcast updated online status to all clients
+      io.emit('online-status', onlinePlayers);
+    });
 
     socket.on('send-message', (message) => {
       messages.push(message);
@@ -47,6 +64,13 @@ app.prepare().then(() => {
 
     socket.on('disconnect', () => {
       console.log('Client disconnected:', socket.id);
+
+      // Update online status when player disconnects
+      if (socket.player) {
+        onlinePlayers[socket.player] = false;
+        console.log(`Player ${socket.player} is now offline`);
+        io.emit('online-status', onlinePlayers);
+      }
     });
   });
 

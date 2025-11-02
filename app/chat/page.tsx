@@ -32,6 +32,7 @@ export default function ChatPage() {
   });
   const [isConnected, setIsConnected] = useState(false);
   const [slaveRank, setSlaveRank] = useState<string>("slave");
+  const [otherPlayerOnline, setOtherPlayerOnline] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const socketRef = useRef<ReturnType<typeof getSocket> | null>(null);
 
@@ -57,6 +58,8 @@ export default function ChatPage() {
 
       socketRef.current.on('connect', () => {
         setIsConnected(true);
+        // Identify this player to the server
+        socketRef.current?.emit('identify-player', selectedPlayer);
       });
 
       socketRef.current.on('disconnect', () => {
@@ -91,6 +94,17 @@ export default function ChatPage() {
           body: JSON.stringify({ rank: newRank })
         }).catch(err => console.error('Failed to save rank:', err));
       });
+
+      socketRef.current.on('online-status', (status: { Goddess: boolean; slave: boolean }) => {
+        // Update the other player's online status
+        const otherPlayer = selectedPlayer === 'Goddess' ? 'slave' : 'Goddess';
+        setOtherPlayerOnline(status[otherPlayer]);
+      });
+
+      // If already connected, identify immediately
+      if (socketRef.current.connected) {
+        socketRef.current.emit('identify-player', selectedPlayer);
+      }
 
       return () => {
         disconnectSocket();
@@ -454,9 +468,19 @@ export default function ChatPage() {
               Chat Room - {selectedPlayer === 'Goddess' ? 'Goddess' : slaveRank}
             </h1>
           </div>
-          <div className={`flex items-center gap-2 ${isConnected ? 'text-green-500' : 'text-red-500'}`}>
-            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'} animate-pulse`} />
-            <span className="text-sm">{isConnected ? 'Connected' : 'Disconnected'}</span>
+          <div className="flex items-center gap-4">
+            {/* Other player online status */}
+            <div className={`flex items-center gap-2 ${otherPlayerOnline ? 'text-green-500' : 'text-gothic-bone/40'}`}>
+              <div className={`w-2 h-2 rounded-full ${otherPlayerOnline ? 'bg-green-500 animate-pulse' : 'bg-gothic-bone/40'}`} />
+              <span className="text-sm">
+                {selectedPlayer === 'Goddess' ? slaveRank : 'Goddess'} {otherPlayerOnline ? 'Online' : 'Offline'}
+              </span>
+            </div>
+            {/* Connection status */}
+            <div className={`flex items-center gap-2 ${isConnected ? 'text-green-500' : 'text-red-500'}`}>
+              <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'} animate-pulse`} />
+              <span className="text-sm">{isConnected ? 'Connected' : 'Disconnected'}</span>
+            </div>
           </div>
         </div>
 
