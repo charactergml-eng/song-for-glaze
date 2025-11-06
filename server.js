@@ -85,11 +85,14 @@ app.prepare().then(() => {
     });
 
     socket.on('send-message', async (message) => {
+      // Check if message mentions @Lexi BEFORE adding to messages
+      const shouldSummonLexi = message.content.includes('@Lexi') && !lexiIsResponding;
+
       messages.push(message);
       io.emit('new-message', message);
 
       // Check if message mentions @Lexi
-      if (message.content.includes('@Lexi') && !lexiIsResponding) {
+      if (shouldSummonLexi) {
         lexiIsResponding = true;
 
         // Emit reply-lock status to all clients
@@ -100,7 +103,23 @@ app.prepare().then(() => {
 
         try {
           // Strip @Lexi mention from the message
-          const userMessage = message.content.replace(/@Lexi\s*/gi, '').trim();
+          const strippedMessage = message.content.replace(/@Lexi\s*/gi, '').trim();
+
+          // Format the current message with the player's name
+          let playerName = '';
+          if (message.player === 'Goddess') {
+            playerName = 'Goddess Batoul';
+          } else if (message.player === 'slave') {
+            playerName = 'Slave Hasan';
+          } else {
+            playerName = `Slave ${message.player}`;
+          }
+
+          const userMessage = `${playerName}: ${strippedMessage}`;
+
+          // Get conversation history EXCLUDING the message we just added
+          // We want the last 20 messages before the current one
+          const conversationHistory = messages.slice(0, -1).slice(-20);
 
           // Call the AI API
           const response = await fetch(`http://${hostname}:${port}/api/ai-chat`, {
@@ -110,7 +129,7 @@ app.prepare().then(() => {
             },
             body: JSON.stringify({
               message: userMessage,
-              conversationHistory: messages.slice(-10), // Send last 10 messages for context
+              conversationHistory: conversationHistory,
             }),
           });
 
