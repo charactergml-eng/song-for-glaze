@@ -128,19 +128,19 @@ export default function Home() {
             <Card className="candle-glow h-full cursor-pointer hover:scale-105 transition-transform" onClick={() => router.push('/affirmations')}>
               <CardHeader>
                 <CardTitle className="text-center text-2xl">
-                  Glazing/Treat
+                 🧎🏻
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-center text-muted-foreground">
-                  Start your day with a glaze or treat
+                  Glazing/Treat
                 </p>
               </CardContent>
             </Card>
           </motion.div>
 
           {/* Song Idea Card */}
-          <motion.div
+          {/* <motion.div
             initial={{ opacity: 0, x: 0 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6, delay: 0.4 }}
@@ -157,7 +157,7 @@ export default function Home() {
                 </p>
               </CardContent>
             </Card>
-          </motion.div>
+          </motion.div> */}
 
           {/* Music Video Card */}
           <motion.div
@@ -168,12 +168,12 @@ export default function Home() {
             <Card className="candle-glow h-full cursor-pointer hover:scale-105 transition-transform" onClick={() => router.push('/music-video')}>
               <CardHeader>
                 <CardTitle className="text-center text-2xl">
-                  Music Video Sneak Peak
+                  🎵
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-center text-muted-foreground">
-                  Watch the exclusive music video
+                  Music Video
                 </p>
               </CardContent>
             </Card>
@@ -188,7 +188,7 @@ export default function Home() {
             <Card className="candle-glow h-full cursor-pointer hover:scale-105 transition-transform" onClick={() => router.push('/chat')}>
               <CardHeader>
                 <CardTitle className="text-center text-2xl">
-                  Real-Time Chat
+                  💬
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -208,12 +208,12 @@ export default function Home() {
             <Card className="candle-glow h-full cursor-pointer hover:scale-105 transition-transform" onClick={() => router.push('/kingdom-rules')}>
               <CardHeader>
                 <CardTitle className="text-center text-2xl">
-                  Kingdom Rules
+                  📜
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-center text-muted-foreground">
-                  Set the kingdom rules
+                  Kingdom Rules
                 </p>
               </CardContent>
             </Card>
