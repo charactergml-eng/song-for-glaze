@@ -64,13 +64,13 @@ export default function Home() {
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center p-8">
-      {/* Logout button in top right */}
-      <div className="absolute top-20 right-8">
+      {/* Logout button in same position as BackButton */}
+      <div className="absolute top-6 left-6 z-50">
         <Button
           onClick={logout}
           variant="outline"
           size="sm"
-          className="gap-2"
+          className="gap-2 bg-gothic-black/80 backdrop-blur-sm border-gothic-darkRed shadow-lg hover:bg-gothic-black/90"
         >
           <LogOut className="w-4 h-4" />
           Logout
@@ -85,7 +85,7 @@ export default function Home() {
       </div>
 
       {/* Kingdom Rules Display */}
-      {kingdomRules && (
+      {/* {kingdomRules && (
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -107,7 +107,7 @@ export default function Home() {
             </CardContent>
           </Card>
         </motion.div>
-      )}
+      )} */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -128,7 +128,7 @@ export default function Home() {
             <Card className="candle-glow h-full cursor-pointer hover:scale-105 transition-transform" onClick={() => router.push('/affirmations')}>
               <CardHeader>
                 <CardTitle className="text-center text-2xl">
-                 🧎🏻
+                 🧎🏻/👸🏻
                 </CardTitle>
               </CardHeader>
               <CardContent>

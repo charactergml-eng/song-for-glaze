@@ -1,11 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import KingdomRuleModel from '@/lib/models/KingdomRule';
+import { cookies } from 'next/headers';
 
 // Type for rules data
 interface RulesData {
   rules: string;
   updatedAt: number;
+}
+
+// Helper function to get user from session
+async function getUserFromSession() {
+  try {
+    const cookieStore = await cookies();
+    const authToken = cookieStore.get('auth-token');
+
+    if (!authToken) {
+      return null;
+    }
+
+    const userData = JSON.parse(authToken.value);
+    return userData;
+  } catch (error) {
+    console.error('Error getting user from session:', error);
+    return null;
+  }
 }
 
 // GET: Read latest kingdom rules
@@ -41,6 +60,23 @@ export async function GET() {
 // POST: Create new kingdom rules entry
 export async function POST(request: NextRequest) {
   try {
+    // Check if user is authenticated and is the Goddess
+    const user = await getUserFromSession();
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized - Please log in' },
+        { status: 401 }
+      );
+    }
+
+    if (user.role !== 'Goddess') {
+      return NextResponse.json(
+        { error: 'Forbidden - Only the Goddess can edit Kingdom Rules' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { rules } = body;
 
