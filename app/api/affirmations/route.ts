@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { put, list } from '@vercel/blob';
-
-const BLOB_FILENAME = 'affirmations.json';
+import { connectToDatabase } from '@/lib/mongodb';
+import AffirmationModel from '@/lib/models/Affirmation';
 
 // Type for affirmations data
 interface AffirmationsData {
@@ -9,31 +8,35 @@ interface AffirmationsData {
   player2_to_player1?: string;
 }
 
-// Get existing data from blob or return empty object
-async function getAffirmationsData(): Promise<AffirmationsData> {
-  try {
-    // List all blobs and find our affirmations file
-    const { blobs } = await list();
-    const affirmationsBlob = blobs.find(blob => blob.pathname === BLOB_FILENAME);
-
-    if (affirmationsBlob) {
-      // Fetch the blob content
-      const response = await fetch(affirmationsBlob.url);
-      if (response.ok) {
-        return await response.json();
-      }
-    }
-  } catch (error) {
-    console.log('No existing blob found, returning empty data:', error);
-  }
-
-  return {};
-}
-
-// GET: Read affirmations
+// GET: Read latest affirmations
 export async function GET() {
   try {
-    const data = await getAffirmationsData();
+    await connectToDatabase();
+
+    // Get the latest affirmation from player1 to player2
+    const player1ToPlayer2 = await AffirmationModel
+      .findOne({ sender: 'player1', recipient: 'player2' })
+      .sort({ createdAt: -1 })
+      .limit(1)
+      .lean();
+
+    // Get the latest affirmation from player2 to player1
+    const player2ToPlayer1 = await AffirmationModel
+      .findOne({ sender: 'player2', recipient: 'player1' })
+      .sort({ createdAt: -1 })
+      .limit(1)
+      .lean();
+
+    const data: AffirmationsData = {};
+
+    if (player1ToPlayer2) {
+      data.player1_to_player2 = player1ToPlayer2.message;
+    }
+
+    if (player2ToPlayer1) {
+      data.player2_to_player1 = player2ToPlayer1.message;
+    }
+
     return NextResponse.json(data);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -45,7 +48,7 @@ export async function GET() {
   }
 }
 
-// POST: Write/update affirmation
+// POST: Create new affirmation
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -66,19 +69,42 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Read existing data
-    const data = await getAffirmationsData();
+    await connectToDatabase();
 
-    // Update the appropriate field
-    const key = player === 'player1' ? 'player1_to_player2' : 'player2_to_player1';
-    data[key] = message;
+    // Determine sender and recipient
+    const sender = player;
+    const recipient = player === 'player1' ? 'player2' : 'player1';
 
-    // Write to Vercel Blob
-    await put(BLOB_FILENAME, JSON.stringify(data, null, 2), {
-      access: 'public',
-      contentType: 'application/json',
-      allowOverwrite: true
+    // Create new affirmation in database
+    const newAffirmation = await AffirmationModel.create({
+      sender,
+      recipient,
+      message,
+      createdAt: new Date()
     });
+
+    // Get the latest affirmations to return
+    const player1ToPlayer2 = await AffirmationModel
+      .findOne({ sender: 'player1', recipient: 'player2' })
+      .sort({ createdAt: -1 })
+      .limit(1)
+      .lean();
+
+    const player2ToPlayer1 = await AffirmationModel
+      .findOne({ sender: 'player2', recipient: 'player1' })
+      .sort({ createdAt: -1 })
+      .limit(1)
+      .lean();
+
+    const data: AffirmationsData = {};
+
+    if (player1ToPlayer2) {
+      data.player1_to_player2 = player1ToPlayer2.message;
+    }
+
+    if (player2ToPlayer1) {
+      data.player2_to_player1 = player2ToPlayer1.message;
+    }
 
     return NextResponse.json({ success: true, data });
   } catch (error) {
