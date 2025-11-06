@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
-import { useRouter } from "next/navigation";
 import { getSocket, disconnectSocket } from "@/lib/socket-client";
 import { Message } from "@/lib/socket";
-import { Send, ArrowLeft, Heart, Zap, Crown, ChevronDown } from "lucide-react";
+import { Send, Zap, Crown, ArrowLeft } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
 
 // Action form component
 function ActionForm({
@@ -169,8 +169,8 @@ function RankChangeForm({
 }
 
 export default function ChatPage() {
-  const router = useRouter();
-  const [selectedPlayer, setSelectedPlayer] = useState<'Goddess' | 'slave' | null>(null);
+  const { user, isLoading, logout } = useAuth();
+  const selectedPlayer = user?.role as 'Goddess' | 'slave'; // Use authenticated user's role
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [showActionMenu, setShowActionMenu] = useState(false);
@@ -211,7 +211,7 @@ export default function ChatPage() {
     });
   };
 
-  // Load rank from blob on mount
+  // Load rank from blob on mount - MUST be before conditional returns
   useEffect(() => {
     const loadRank = async () => {
       try {
@@ -315,6 +315,20 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return (
+      <main className="min-h-screen flex items-center justify-center">
+        <div className="text-gothic-crimson text-glow">Loading...</div>
+      </main>
+    );
+  }
+
+  // Redirect will be handled by AuthProvider, but we can show nothing while redirecting
+  if (!user) {
+    return null;
+  }
+
   const handleSendAction = (action: string) => {
     if (!selectedPlayer || !socketRef.current) return;
 
@@ -414,81 +428,6 @@ export default function ChatPage() {
     return 'Type a message... (use @Lexi to summon the goddess)';
   };
 
-  if (!selectedPlayer) {
-    return (
-      <main className="min-h-screen flex flex-col items-center justify-center p-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="w-full max-w-2xl"
-        >
-          <h1 className="text-4xl md:text-5xl font-gothic text-gothic-crimson text-glow text-center mb-12">
-            Select Your Player
-          </h1>
-
-          <div className="grid md:grid-cols-2 gap-8">
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-            >
-              <Card
-                className="candle-glow h-full cursor-pointer hover:scale-105 transition-transform"
-                onClick={() => setSelectedPlayer('Goddess')}
-              >
-                <CardHeader>
-                  <CardTitle className="text-center text-3xl">
-                    Goddess
-                  </CardTitle>
-                </CardHeader>
-              </Card>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6, delay: 0.4 }}
-            >
-              <Card
-                className="candle-glow h-full cursor-pointer hover:scale-105 transition-transform"
-                onClick={() => setSelectedPlayer('slave')}
-              >
-                <CardHeader>
-                  <CardTitle className="text-center text-3xl">
-                    {slaveRank}
-                  </CardTitle>
-                </CardHeader>
-              </Card>
-            </motion.div>
-          </div>
-
-          <div className="flex justify-center mt-8">
-            <Button
-              onClick={() => router.push('/')}
-              variant="outline"
-              className="gap-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Home
-            </Button>
-          </div>
-
-          {/* Decorative candles */}
-          <div className="flex gap-4 justify-center mt-12">
-            {[...Array(5)].map((_, i) => (
-              <div
-                key={i}
-                className="w-2 h-8 bg-gothic-bloodRed rounded-full animate-candle-flicker candle-glow"
-                style={{ animationDelay: `${i * 0.2}s` }}
-              />
-            ))}
-          </div>
-        </motion.div>
-      </main>
-    );
-  }
-
   return (
     <main className="min-h-screen flex flex-col p-4 md:p-8">
       <motion.div
@@ -500,15 +439,6 @@ export default function ChatPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-4">
-            <Button
-              onClick={() => setSelectedPlayer(null)}
-              variant="outline"
-              size="sm"
-              className="gap-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Change Player
-            </Button>
             <h1 className="text-2xl md:text-3xl font-gothic text-gothic-crimson text-glow">
               Chat Room - {selectedPlayer === 'Goddess' ? 'Goddess' : slaveRank}
             </h1>

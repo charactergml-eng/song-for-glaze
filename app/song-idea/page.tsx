@@ -64,13 +64,6 @@ export default function SongIdea() {
             >
               Submit Another Idea
             </Button>
-            <Button
-              onClick={() => router.push('/')}
-              variant="outline"
-              className="text-lg font-gothic"
-            >
-              Back to Home
-            </Button>
           </div>
           <div className="flex gap-4 justify-center mt-8">
             {[...Array(5)].map((_, i) => (
@@ -94,14 +87,6 @@ export default function SongIdea() {
         transition={{ duration: 0.6 }}
         className="w-full max-w-lg"
       >
-        <Button
-          onClick={() => router.push('/')}
-          variant="outline"
-          className="mb-6 font-gothic"
-        >
-          ← Back to Home
-        </Button>
-
         <Card className="candle-glow">
           <CardHeader>
             <CardTitle className="text-center text-2xl">

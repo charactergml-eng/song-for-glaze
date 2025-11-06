@@ -131,14 +131,6 @@ export default function Player1() {
         transition={{ duration: 0.6 }}
         className="w-full max-w-2xl space-y-6"
       >
-        <Button
-          onClick={() => router.push('/affirmations')}
-          variant="outline"
-          className="font-gothic"
-        >
-          ← Back to Player Selection
-        </Button>
-
         <h1 className="text-3xl md:text-4xl font-gothic text-gothic-crimson text-glow text-center">
           Goddess
         </h1>

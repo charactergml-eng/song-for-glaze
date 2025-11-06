@@ -1,16 +1,20 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
+import { useAuth } from "@/lib/auth-context";
+import { LogOut } from "lucide-react";
 
 export default function Home() {
   const router = useRouter();
+  const { user, isLoading, logout } = useAuth();
   const [slaveRank, setSlaveRank] = useState<string>("slave");
   const [kingdomRules, setKingdomRules] = useState<string>("");
 
-  // Load rank from blob on mount
+  // Load rank from blob on mount - MUST be before conditional returns
   useEffect(() => {
     const loadRank = async () => {
       try {
@@ -26,7 +30,7 @@ export default function Home() {
     loadRank();
   }, []);
 
-  // Load rules on mount
+  // Load rules on mount - MUST be before conditional returns
   useEffect(() => {
     const loadRules = async () => {
       try {
@@ -44,12 +48,39 @@ export default function Home() {
     loadRules();
   }, []);
 
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return (
+      <main className="min-h-screen flex items-center justify-center">
+        <div className="text-gothic-crimson text-glow">Loading...</div>
+      </main>
+    );
+  }
+
+  // Redirect will be handled by AuthProvider, but we can show nothing while redirecting
+  if (!user) {
+    return null;
+  }
+
   return (
     <main className="min-h-screen flex flex-col items-center justify-center p-8">
+      {/* Logout button in top right */}
+      <div className="absolute top-20 right-8">
+        <Button
+          onClick={logout}
+          variant="outline"
+          size="sm"
+          className="gap-2"
+        >
+          <LogOut className="w-4 h-4" />
+          Logout
+        </Button>
+      </div>
+
       <h1 className="text-4xl md:text-5xl font-gothic text-gothic-crimson text-glow text-center mb-4">Welcome to Goddess Batoul's Kingdom</h1>
       <div className="text-center mb-8">
         <p className="text-gothic-bone/80 text-lg">
-          and under her command: <span className="text-gothic-crimson font-bold">{slaveRank}</span>
+          Logged in as: <span className="text-gothic-crimson font-bold">{user.role === 'Goddess' ? 'Goddess' : slaveRank}</span>
         </p>
       </div>
 
