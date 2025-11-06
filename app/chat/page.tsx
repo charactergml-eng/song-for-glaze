@@ -529,8 +529,8 @@ export default function ChatPage() {
         <Card className="flex-1 flex flex-col candle-glow overflow-hidden">
           <CardContent className="flex-1 overflow-y-auto p-4 space-y-4 relative">
             <div
-              className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-20"
-              style={{ backgroundImage: 'url(/player-1.png)' }}
+              className="fixed inset-0 bg-cover bg-center bg-no-repeat opacity-20 pointer-events-none"
+              style={{ backgroundImage: 'url(/queen-bg.png)' }}
             />
             <AnimatePresence>
               {messages.map((message) => (
@@ -585,21 +585,23 @@ export default function ChatPage() {
                       </div>
                     </div>
                   ) : (
-                    // Regular message - normal bubble
-                    <div
-                      className={`max-w-[70%] rounded-lg p-3 ${
-                        message.player === selectedPlayer
-                          ? 'bg-gothic-darkRed'
-                          : 'bg-gothic-black border border-gothic-darkRed'
-                      }`}
-                    >
-                      <div className="text-xs text-gothic-bone/60 mb-1">
-                        {message.player === 'Goddess' ? 'Goddess' : slaveRank}
+                    // Regular message - chatbox bubble
+                    <div className="flex flex-col gap-1 max-w-[70%]">
+                      <div
+                        className={`rounded-2xl p-3 backdrop-blur-sm ${
+                          message.player === selectedPlayer
+                            ? 'bg-red-950/40 rounded-br-sm'
+                            : 'bg-white/20 rounded-bl-sm'
+                        }`}
+                      >
+                        <div className="text-xs text-gothic-bone/80 mb-1 font-semibold">
+                          {message.player === 'Goddess' ? 'Goddess' : slaveRank}
+                        </div>
+                        <div className="text-gothic-bone break-words">
+                          {message.content}
+                        </div>
                       </div>
-                      <div className="text-gothic-bone break-words">
-                        {message.content}
-                      </div>
-                      <div className="text-xs text-gothic-bone/40 mt-1">
+                      <div className={`text-xs text-gothic-bone/40 px-2 ${message.player === selectedPlayer ? 'text-right' : 'text-left'}`}>
                         {new Date(message.timestamp).toLocaleTimeString()}
                       </div>
                     </div>
