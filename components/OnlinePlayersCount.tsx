@@ -42,7 +42,7 @@ export function OnlinePlayersCount() {
   }, []);
 
   return (
-    <div className="fixed top-6 right-6 z-50 flex items-center gap-2 bg-gothic-black/80 backdrop-blur-sm border border-gothic-darkRed rounded-lg px-4 py-2 shadow-lg">
+    <div className="absolute top-6 right-6 z-50 flex items-center gap-2 bg-gothic-black/80 backdrop-blur-sm border border-gothic-darkRed rounded-lg px-4 py-2 shadow-lg">
       <Users className="w-4 h-4 text-gothic-crimson" />
       <span className="text-sm text-gothic-bone">
         <span className="font-semibold text-gothic-crimson">{onlineCount}</span> online
