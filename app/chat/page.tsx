@@ -179,20 +179,30 @@ export default function ChatPage() {
   const [slaveRank, setSlaveRank] = useState<string>("slave");
   const [otherPlayerOnline, setOtherPlayerOnline] = useState(false);
   const [otherPlayerTyping, setOtherPlayerTyping] = useState(false);
+  const [lexiResponding, setLexiResponding] = useState(false);
+  const [lexiTyping, setLexiTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const socketRef = useRef<ReturnType<typeof getSocket> | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Helper function to render text with highlighted mentions
   const renderWithMentions = (text: string) => {
-    // Match @Goddess or @{any text} patterns
+    // Match @Goddess, @Lexi or @{any text} patterns
     const parts = text.split(/(@\w+)/g);
 
     return parts.map((part, index) => {
       if (part.startsWith('@')) {
         const mentionText = part.substring(1); // Remove the @
+        const isLexi = mentionText === 'Lexi';
         return (
-          <span key={index} className="font-bold text-gothic-bone bg-gothic-darkRed/50 px-1 rounded">
+          <span
+            key={index}
+            className={`font-bold px-1 rounded ${
+              isLexi
+                ? 'text-purple-300 bg-purple-900/50'
+                : 'text-gothic-bone bg-gothic-darkRed/50'
+            }`}
+          >
             {mentionText}
           </span>
         );
@@ -267,17 +277,27 @@ export default function ChatPage() {
       });
 
       socketRef.current.on('user-typing', (player: string) => {
-        // Only show typing indicator if it's the other player
-        if (player !== selectedPlayer) {
+        // Handle Lexi typing separately
+        if (player === 'Lexi') {
+          setLexiTyping(true);
+        } else if (player !== selectedPlayer) {
+          // Only show typing indicator if it's the other player
           setOtherPlayerTyping(true);
         }
       });
 
       socketRef.current.on('user-stopped-typing', (player: string) => {
-        // Only hide typing indicator if it's the other player
-        if (player !== selectedPlayer) {
+        // Handle Lexi typing separately
+        if (player === 'Lexi') {
+          setLexiTyping(false);
+        } else if (player !== selectedPlayer) {
+          // Only hide typing indicator if it's the other player
           setOtherPlayerTyping(false);
         }
+      });
+
+      socketRef.current.on('lexi-responding', (isResponding: boolean) => {
+        setLexiResponding(isResponding);
       });
 
       // If already connected, identify immediately
@@ -388,7 +408,10 @@ export default function ChatPage() {
   };
 
   const getPlaceholder = () => {
-    return 'Type a message...';
+    if (lexiResponding) {
+      return 'Lexi is responding... Please wait.';
+    }
+    return 'Type a message... (use @Lexi to summon the goddess)';
   };
 
   if (!selectedPlayer) {
@@ -504,7 +527,11 @@ export default function ChatPage() {
 
         {/* Messages */}
         <Card className="flex-1 flex flex-col candle-glow overflow-hidden">
-          <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
+          <CardContent className="flex-1 overflow-y-auto p-4 space-y-4 relative">
+            <div
+              className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-20"
+              style={{ backgroundImage: 'url(/player-1.png)' }}
+            />
             <AnimatePresence>
               {messages.map((message) => (
                 <motion.div
@@ -512,9 +539,25 @@ export default function ChatPage() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className={`flex ${message.type === 'action' || message.type === 'rank-change' ? 'justify-center' : message.player === selectedPlayer ? 'justify-end' : 'justify-start'}`}
+                  className={`flex relative z-10 ${message.type === 'action' || message.type === 'rank-change' ? 'justify-center' : message.player === selectedPlayer ? 'justify-end' : 'justify-start'}`}
                 >
-                  {message.type === 'action' ? (
+                  {message.type === 'ai' ? (
+                    // AI message from Lexi - special goddess styling
+                    <div className="flex flex-col items-center gap-1 max-w-[85%]">
+                      <div className="bg-gradient-to-r from-purple-900/30 via-gothic-darkRed/30 to-purple-900/30 border-2 border-purple-500/50 rounded-lg px-4 py-3 shadow-lg shadow-purple-500/20">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Crown className="w-4 h-4 text-purple-400" />
+                          <span className="text-xs font-bold text-purple-300">Lexi - Royal Black Cat Goddess</span>
+                        </div>
+                        <div className="text-gothic-bone break-words leading-relaxed">
+                          {message.content}
+                        </div>
+                      </div>
+                      <div className="text-xs text-gothic-bone/40">
+                        {new Date(message.timestamp).toLocaleTimeString()}
+                      </div>
+                    </div>
+                  ) : message.type === 'action' ? (
                     // Action message - centered with special styling
                     <div className="flex flex-col items-center gap-1 max-w-[80%]">
                       <div className="text-gothic-crimson italic text-center break-words">
@@ -563,30 +606,39 @@ export default function ChatPage() {
                   )}
                 </motion.div>
               ))}
-
-              {/* Typing indicator */}
-              {otherPlayerTyping && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  className="flex justify-start"
-                >
-                  <div className="bg-gothic-black border border-gothic-darkRed rounded-lg px-4 py-3 max-w-[70%]">
-                    <div className="text-xs text-gothic-bone/60 mb-1">
-                      {selectedPlayer === 'Goddess' ? slaveRank + ' typing...' : 'Goddess typing...'}
-                    </div>
-                    <div className="flex gap-1 items-center">
-                      <div className="w-2 h-2 bg-gothic-crimson rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <div className="w-2 h-2 bg-gothic-crimson rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                      <div className="w-2 h-2 bg-gothic-crimson rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                    </div>
-                  </div>
-                </motion.div>
-              )}
             </AnimatePresence>
-            <div ref={messagesEndRef} />
+            <div ref={messagesEndRef} className="relative z-10" />
           </CardContent>
+
+          {/* Typing indicator - fixed at bottom of messages */}
+          <AnimatePresence>
+            {(otherPlayerTyping || lexiTyping) && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="px-4 py-2 border-t border-gothic-darkRed/50"
+              >
+                <div className="flex items-center gap-2 text-xs text-gothic-bone/60">
+                  <div className="flex gap-1">
+                    <div className={`w-1.5 h-1.5 rounded-full animate-bounce ${lexiTyping ? 'bg-purple-400' : 'bg-gothic-crimson'}`} style={{ animationDelay: '0ms' }} />
+                    <div className={`w-1.5 h-1.5 rounded-full animate-bounce ${lexiTyping ? 'bg-purple-400' : 'bg-gothic-crimson'}`} style={{ animationDelay: '150ms' }} />
+                    <div className={`w-1.5 h-1.5 rounded-full animate-bounce ${lexiTyping ? 'bg-purple-400' : 'bg-gothic-crimson'}`} style={{ animationDelay: '300ms' }} />
+                  </div>
+                  <span className={lexiTyping ? 'text-purple-300' : ''}>
+                    {lexiTyping ? (
+                      <span className="flex items-center gap-1">
+                        <Crown className="w-3 h-3" />
+                        Lexi is typing...
+                      </span>
+                    ) : (
+                      `${selectedPlayer === 'Goddess' ? slaveRank : 'Goddess'} is typing...`
+                    )}
+                  </span>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Input */}
           <div className="p-4 border-t border-gothic-darkRed space-y-3">
@@ -597,6 +649,7 @@ export default function ChatPage() {
                 variant="outline"
                 size="sm"
                 className="gap-2"
+                disabled={lexiResponding}
               >
                 <Zap className="w-4 h-4" />
                 Send Action
@@ -608,6 +661,7 @@ export default function ChatPage() {
                   variant="outline"
                   size="sm"
                   className="gap-2"
+                  disabled={lexiResponding}
                 >
                   <Crown className="w-4 h-4" />
                   Change Rank
@@ -646,11 +700,12 @@ export default function ChatPage() {
                 onChange={handleInputChange}
                 onKeyPress={handleKeyPress}
                 placeholder={getPlaceholder()}
-                className="flex-1 bg-gothic-black border border-gothic-darkRed rounded-md px-4 py-2 text-gothic-bone placeholder:text-gothic-bone/40 focus:outline-none focus:border-gothic-crimson"
+                disabled={lexiResponding}
+                className="flex-1 bg-gothic-black border border-gothic-darkRed rounded-md px-4 py-2 text-gothic-bone placeholder:text-gothic-bone/40 focus:outline-none focus:border-gothic-crimson disabled:opacity-50 disabled:cursor-not-allowed"
               />
               <Button
                 onClick={handleSendMessage}
-                disabled={!inputValue.trim()}
+                disabled={!inputValue.trim() || lexiResponding}
                 className="gap-2"
               >
                 <Send className="w-4 h-4" />

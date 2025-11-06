@@ -4,7 +4,7 @@ const next = require('next');
 const { Server } = require('socket.io');
 
 const dev = process.env.NODE_ENV !== 'production';
-const hostname = '0.0.0.0';
+const hostname = 'localhost';
 const port = parseInt(process.env.PORT || '3000', 10);
 
 const app = next({ dev, hostname, port });
@@ -37,6 +37,9 @@ app.prepare().then(() => {
     Goddess: false,
     slave: false
   };
+
+  // Track if Lexi (AI) is currently generating a response
+  let lexiIsResponding = false;
 
   // Track all connected visitors (sockets)
   const connectedVisitors = new Set();
@@ -81,9 +84,65 @@ app.prepare().then(() => {
       io.emit('online-status', onlinePlayers);
     });
 
-    socket.on('send-message', (message) => {
+    socket.on('send-message', async (message) => {
       messages.push(message);
       io.emit('new-message', message);
+
+      // Check if message mentions @Lexi
+      if (message.content.includes('@Lexi') && !lexiIsResponding) {
+        lexiIsResponding = true;
+
+        // Emit reply-lock status to all clients
+        io.emit('lexi-responding', true);
+
+        // Simulate Lexi typing
+        io.emit('user-typing', 'Lexi');
+
+        try {
+          // Strip @Lexi mention from the message
+          const userMessage = message.content.replace(/@Lexi\s*/gi, '').trim();
+
+          // Call the AI API
+          const response = await fetch(`http://${hostname}:${port}/api/ai-chat`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              message: userMessage,
+              conversationHistory: messages.slice(-10), // Send last 10 messages for context
+            }),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+
+            // Stop typing indicator
+            io.emit('user-stopped-typing', 'Lexi');
+
+            // Create Lexi's message
+            const lexiMessage = {
+              id: Date.now().toString(),
+              player: 'Lexi',
+              content: data.reply,
+              timestamp: Date.now(),
+              type: 'ai'
+            };
+
+            messages.push(lexiMessage);
+            io.emit('new-message', lexiMessage);
+          } else {
+            console.error('AI API error:', response.statusText);
+            io.emit('user-stopped-typing', 'Lexi');
+          }
+        } catch (error) {
+          console.error('Error calling AI API:', error);
+          io.emit('user-stopped-typing', 'Lexi');
+        } finally {
+          lexiIsResponding = false;
+          io.emit('lexi-responding', false);
+        }
+      }
     });
 
     socket.on('typing', (player) => {
