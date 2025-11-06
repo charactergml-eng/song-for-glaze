@@ -1,7 +1,11 @@
+// Load environment variables from .env.local first
+require('dotenv').config({ path: '.env.local' });
+
 const { createServer } = require('http');
 const { parse } = require('url');
 const next = require('next');
 const { Server } = require('socket.io');
+const { connectToDatabase, MessageModel } = require('./lib/mongodb.js');
 
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = '0.0.0.0';
@@ -9,6 +13,22 @@ const port = parseInt(process.env.PORT || '3000', 10);
 
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
+
+// Connect to MongoDB on startup
+let isMongoConnected = false;
+console.log('🔄 Attempting to connect to MongoDB...');
+console.log('📍 MONGODB_URI:', process.env.MONGODB_URI ? 'Set ✓' : 'Not set ✗');
+
+connectToDatabase()
+  .then(() => {
+    isMongoConnected = true;
+    console.log('✅ MongoDB connected successfully');
+    console.log('✅ MongoDB ready for chat history');
+  })
+  .catch((err) => {
+    console.error('❌ MongoDB connection failed:', err.message);
+    console.log('⚠️ Chat will work but messages will not be persisted');
+  });
 
 app.prepare().then(() => {
   const httpServer = createServer(async (req, res) => {
@@ -50,7 +70,7 @@ app.prepare().then(() => {
     console.log(`Broadcasting visitor count: ${count}`);
   };
 
-  io.on('connection', (socket) => {
+  io.on('connection', async (socket) => {
     console.log('Client connected:', socket.id);
 
     // Add visitor immediately on connection
@@ -63,8 +83,40 @@ app.prepare().then(() => {
     // Broadcast to all clients
     broadcastVisitorCount();
 
+    // Load messages from MongoDB if connected, otherwise use in-memory messages
+    let messagesToSend = messages;
+    console.log(`📊 Connection status - MongoDB: ${isMongoConnected ? 'Connected ✓' : 'Not connected ✗'}`);
+
+    if (isMongoConnected) {
+      try {
+        const dbMessages = await MessageModel.find()
+          .sort({ timestamp: 1 })
+          .limit(100)
+          .lean();
+
+        console.log(`📚 Found ${dbMessages.length} messages in MongoDB`);
+
+        // Transform MongoDB messages to match client format (remove _id, __v)
+        messagesToSend = dbMessages.map(msg => ({
+          id: msg.id,
+          player: msg.player,
+          content: msg.content,
+          timestamp: msg.timestamp,
+          type: msg.type,
+          ...(msg.rankChange && { rankChange: msg.rankChange })
+        }));
+
+        console.log(`✅ Loaded ${messagesToSend.length} messages from MongoDB`);
+      } catch (error) {
+        console.error('❌ Error loading messages from MongoDB:', error);
+        messagesToSend = messages;
+      }
+    } else {
+      console.log(`📝 Using in-memory messages: ${messages.length} messages`);
+    }
+
     // Send existing messages to new client
-    socket.emit('load-messages', messages);
+    socket.emit('load-messages', messagesToSend);
 
     // Send current online status for chat players
     socket.emit('online-status', onlinePlayers);
@@ -88,7 +140,19 @@ app.prepare().then(() => {
       // Check if message mentions @Lexi BEFORE adding to messages
       const shouldSummonLexi = message.content.includes('@Lexi') && !lexiIsResponding;
 
+      // Save to in-memory array
       messages.push(message);
+
+      // Save to MongoDB if connected
+      if (isMongoConnected) {
+        try {
+          await MessageModel.create(message);
+          console.log(`💾 Saved message to MongoDB: ${message.type} from ${message.player}`);
+        } catch (error) {
+          console.error('Error saving message to MongoDB:', error);
+        }
+      }
+
       io.emit('new-message', message);
 
       // Check if message mentions @Lexi
@@ -148,7 +212,19 @@ app.prepare().then(() => {
               type: 'ai'
             };
 
+            // Save to in-memory array
             messages.push(lexiMessage);
+
+            // Save to MongoDB if connected
+            if (isMongoConnected) {
+              try {
+                await MessageModel.create(lexiMessage);
+                console.log(`💾 Saved Lexi's response to MongoDB`);
+              } catch (error) {
+                console.error('Error saving Lexi message to MongoDB:', error);
+              }
+            }
+
             io.emit('new-message', lexiMessage);
           } else {
             console.error('AI API error:', response.statusText);

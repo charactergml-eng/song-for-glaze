@@ -549,7 +549,7 @@ export default function ChatPage() {
                           <Crown className="w-4 h-4 text-purple-400" />
                           <span className="text-xs font-bold text-purple-300">Lexi - Royal Black Cat Goddess</span>
                         </div>
-                        <div className="text-gothic-bone break-words leading-relaxed">
+                        <div className="text-gothic-bone wrap-break-word leading-relaxed">
                           {message.content}
                         </div>
                       </div>
@@ -560,7 +560,7 @@ export default function ChatPage() {
                   ) : message.type === 'action' ? (
                     // Action message - centered with special styling
                     <div className="flex flex-col items-center gap-1 max-w-[80%]">
-                      <div className="text-gothic-crimson italic text-center break-words">
+                      <div className="text-gothic-crimson italic text-center wrap-break-word">
                         {message.player === 'Goddess' ? 'Goddess' : slaveRank} {renderWithMentions(message.content)}
                       </div>
                       <div className="text-xs text-gothic-bone/40">
@@ -571,7 +571,7 @@ export default function ChatPage() {
                     // Rank change message - centered with special styling
                     <div className="flex flex-col items-center gap-1 max-w-[80%]">
                       <div className="bg-gothic-darkRed/50 border border-gothic-crimson rounded-lg px-4 py-2">
-                        <div className="text-gothic-crimson font-bold text-center break-words">
+                        <div className="text-gothic-crimson font-bold text-center wrap-break-word">
                           {message.content}
                         </div>
                         {message.rankChange && (
@@ -597,7 +597,7 @@ export default function ChatPage() {
                         <div className="text-xs text-gothic-bone/80 mb-1 font-semibold">
                           {message.player === 'Goddess' ? 'Goddess' : slaveRank}
                         </div>
-                        <div className="text-gothic-bone break-words">
+                        <div className="text-gothic-bone wrap-break-word">
                           {message.content}
                         </div>
                       </div>
