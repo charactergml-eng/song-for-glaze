@@ -144,61 +144,61 @@ app.prepare().then(() => {
       const shouldShowStats = message.content.includes('@stats');
 
       // Process slave actions through AI rephraser
-      if (message.player === 'slave' && message.type === 'action') {
-        try {
-          console.log(`🔄 Intercepting slave action: "${message.content}"`);
+      // if (message.player === 'slave' && message.type === 'action') {
+      //   try {
+      //     console.log(`🔄 Intercepting slave action: "${message.content}"`);
 
-          // Notify all clients that action is being processed
-          io.emit('action-processing', { player: 'slave', processing: true });
+      //     // Notify all clients that action is being processed
+      //     io.emit('action-processing', { player: 'slave', processing: true });
 
-          // Get current slave stats
-          const statsResponse = await fetch(`http://${hostname}:${port}/api/stats`, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          });
+      //     // Get current slave stats
+      //     const statsResponse = await fetch(`http://${hostname}:${port}/api/stats`, {
+      //       method: 'GET',
+      //       headers: {
+      //         'Content-Type': 'application/json',
+      //       },
+      //     });
 
-          if (statsResponse.ok) {
-            const statsData = await statsResponse.json();
-            console.log(`📊 Current slave stats:`, statsData.stats);
+      //     if (statsResponse.ok) {
+      //       const statsData = await statsResponse.json();
+      //       console.log(`📊 Current slave stats:`, statsData.stats);
 
-            // Call the action rephraser AI
-            const rephraseResponse = await fetch(`http://${hostname}:${port}/api/stats/rephrase-action`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                action: message.content,
-                stats: statsData.stats,
-              }),
-            });
+      //       // Call the action rephraser AI
+      //       const rephraseResponse = await fetch(`http://${hostname}:${port}/api/stats/rephrase-action`, {
+      //         method: 'POST',
+      //         headers: {
+      //           'Content-Type': 'application/json',
+      //         },
+      //         body: JSON.stringify({
+      //           action: message.content,
+      //           stats: statsData.stats,
+      //         }),
+      //       });
 
-            if (rephraseResponse.ok) {
-              const rephraseData = await rephraseResponse.json();
-              const rephrasedAction = rephraseData.rephrasedAction;
+      //       if (rephraseResponse.ok) {
+      //         const rephraseData = await rephraseResponse.json();
+      //         const rephrasedAction = rephraseData.rephrasedAction;
 
-              console.log(`✍️ Action rephrased from "${message.content}" to "${rephrasedAction}"`);
+      //         console.log(`✍️ Action rephrased from "${message.content}" to "${rephrasedAction}"`);
 
-              // Replace the message content with the rephrased action
-              message.content = rephrasedAction;
-            } else {
-              console.error('Failed to rephrase action:', rephraseResponse.statusText);
-            }
-          } else {
-            console.error('Failed to fetch stats:', statsResponse.statusText);
-          }
+      //         // Replace the message content with the rephrased action
+      //         message.content = rephrasedAction;
+      //       } else {
+      //         console.error('Failed to rephrase action:', rephraseResponse.statusText);
+      //       }
+      //     } else {
+      //       console.error('Failed to fetch stats:', statsResponse.statusText);
+      //     }
 
-          // Notify all clients that action processing is complete
-          io.emit('action-processing', { player: 'slave', processing: false });
-        } catch (error) {
-          console.error('Error processing slave action:', error);
-          // Notify all clients that action processing is complete even on error
-          io.emit('action-processing', { player: 'slave', processing: false });
-          // If error occurs, continue with original action
-        }
-      }
+      //     // Notify all clients that action processing is complete
+      //     io.emit('action-processing', { player: 'slave', processing: false });
+      //   } catch (error) {
+      //     console.error('Error processing slave action:', error);
+      //     // Notify all clients that action processing is complete even on error
+      //     io.emit('action-processing', { player: 'slave', processing: false });
+      //     // If error occurs, continue with original action
+      //   }
+      // }
 
       // Save to in-memory array
       messages.push(message);
@@ -216,137 +216,137 @@ app.prepare().then(() => {
       io.emit('new-message', message);
 
       // Process stat changes if Goddess sends an action or rank change
-      if (message.player === 'Goddess' && (message.type === 'action' || message.type === 'rank-change')) {
-        try {
-          console.log(`📊 Processing stat changes for ${message.type}: ${message.content}`);
+      // if (message.player === 'Goddess' && (message.type === 'action' || message.type === 'rank-change')) {
+      //   try {
+      //     console.log(`📊 Processing stat changes for ${message.type}: ${message.content}`);
 
-          // Notify all clients that action is being processed
-          io.emit('action-processing', { player: 'Goddess', processing: true });
+      //     // Notify all clients that action is being processed
+      //     io.emit('action-processing', { player: 'Goddess', processing: true });
 
-          // Call the stat processor AI
-          const statProcessResponse = await fetch(`http://${hostname}:${port}/api/stats/process-action`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              action: message.content,
-              actionType: message.type,
-            }),
-          });
+      //     // Call the stat processor AI
+      //     const statProcessResponse = await fetch(`http://${hostname}:${port}/api/stats/process-action`, {
+      //       method: 'POST',
+      //       headers: {
+      //         'Content-Type': 'application/json',
+      //       },
+      //       body: JSON.stringify({
+      //         action: message.content,
+      //         actionType: message.type,
+      //       }),
+      //     });
 
-          if (statProcessResponse.ok) {
-            const statData = await statProcessResponse.json();
-            const { hungerChange, waterChange, healthChange } = statData.changes;
-            const impactMessage = statData.impactMessage;
+      //     if (statProcessResponse.ok) {
+      //       const statData = await statProcessResponse.json();
+      //       const { hungerChange, waterChange, healthChange } = statData.changes;
+      //       const impactMessage = statData.impactMessage;
 
-            console.log(`📊 AI determined stat changes:`, statData.changes);
-            console.log(`💬 Impact message:`, impactMessage);
+      //       console.log(`📊 AI determined stat changes:`, statData.changes);
+      //       console.log(`💬 Impact message:`, impactMessage);
 
-            // Apply the stat changes
-            const applyStatsResponse = await fetch(`http://${hostname}:${port}/api/stats`, {
-              method: 'PATCH',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                hungerChange,
-                waterChange,
-                healthChange,
-              }),
-            });
+      //       // Apply the stat changes
+      //       const applyStatsResponse = await fetch(`http://${hostname}:${port}/api/stats`, {
+      //         method: 'PATCH',
+      //         headers: {
+      //           'Content-Type': 'application/json',
+      //         },
+      //         body: JSON.stringify({
+      //           hungerChange,
+      //           waterChange,
+      //           healthChange,
+      //         }),
+      //       });
 
-            if (applyStatsResponse.ok) {
-              const updatedStats = await applyStatsResponse.json();
-              console.log(`✅ Updated slave stats:`, updatedStats.stats);
+      //       if (applyStatsResponse.ok) {
+      //         const updatedStats = await applyStatsResponse.json();
+      //         console.log(`✅ Updated slave stats:`, updatedStats.stats);
 
-              // Broadcast stat update to all clients
-              io.emit('stats-updated', updatedStats.stats);
+      //         // Broadcast stat update to all clients
+      //         io.emit('stats-updated', updatedStats.stats);
 
-              // Send the impact message to chat if it exists
-              if (impactMessage) {
-                const impactChatMessage = {
-                  id: Date.now().toString() + '-impact',
-                  player: 'System',
-                  content: `Hunger: ${hungerChange} + Water: ${waterChange} + Health: ${healthChange}`,
-                  timestamp: Date.now(),
-                  type: 'action'
-                };
+      //         // Send the impact message to chat if it exists
+      //         if (impactMessage) {
+      //           const impactChatMessage = {
+      //             id: Date.now().toString() + '-impact',
+      //             player: 'System',
+      //             content: `Hunger: ${hungerChange} + Water: ${waterChange} + Health: ${healthChange}`,
+      //             timestamp: Date.now(),
+      //             type: 'action'
+      //           };
 
-                // Save to in-memory array
-                messages.push('Hunger: ' + hungerChange);
-                messages.push('Water: ' + waterChange);
-                messages.push('Health: ' + healthChange);
+      //           // Save to in-memory array
+      //           messages.push('Hunger: ' + hungerChange);
+      //           messages.push('Water: ' + waterChange);
+      //           messages.push('Health: ' + healthChange);
 
-                // Save to MongoDB if connected
-                if (isMongoConnected) {
-                  try {
-                    await MessageModel.create(impactChatMessage);
-                    console.log(`💾 Saved impact message to MongoDB`);
-                  } catch (error) {
-                    console.error('Error saving impact message to MongoDB:', error);
-                  }
-                }
+      //           // Save to MongoDB if connected
+      //           if (isMongoConnected) {
+      //             try {
+      //               await MessageModel.create(impactChatMessage);
+      //               console.log(`💾 Saved impact message to MongoDB`);
+      //             } catch (error) {
+      //               console.error('Error saving impact message to MongoDB:', error);
+      //             }
+      //           }
 
-                // Broadcast the impact message to all clients
-                io.emit('new-message', impactChatMessage);
-              }
-            }
-          }
+      //           // Broadcast the impact message to all clients
+      //           io.emit('new-message', impactChatMessage);
+      //         }
+      //       }
+      //     }
 
-          // Notify all clients that action processing is complete
-          io.emit('action-processing', { player: 'Goddess', processing: false });
-        } catch (error) {
-          console.error('Error processing stat changes:', error);
-          // Notify all clients that action processing is complete even on error
-          io.emit('action-processing', { player: 'Goddess', processing: false });
-        }
-      }
+      //     // Notify all clients that action processing is complete
+      //     io.emit('action-processing', { player: 'Goddess', processing: false });
+      //   } catch (error) {
+      //     console.error('Error processing stat changes:', error);
+      //     // Notify all clients that action processing is complete even on error
+      //     io.emit('action-processing', { player: 'Goddess', processing: false });
+      //   }
+      // }
 
       // Handle @stats command
-      if (shouldShowStats) {
-        try {
-          console.log(`📊 Fetching stats for @stats command`);
+      // if (shouldShowStats) {
+      //   try {
+      //     console.log(`📊 Fetching stats for @stats command`);
 
-          const statsResponse = await fetch(`http://${hostname}:${port}/api/stats`, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          });
+      //     const statsResponse = await fetch(`http://${hostname}:${port}/api/stats`, {
+      //       method: 'GET',
+      //       headers: {
+      //         'Content-Type': 'application/json',
+      //       },
+      //     });
 
-          if (statsResponse.ok) {
-            const statsData = await statsResponse.json();
-            console.log(`📊 Current stats:`, statsData.stats);
+      //     if (statsResponse.ok) {
+      //       const statsData = await statsResponse.json();
+      //       console.log(`📊 Current stats:`, statsData.stats);
 
-            // Create a stats message
-            const statsMessage = {
-              id: Date.now().toString() + '-stats',
-              player: 'System',
-              content: JSON.stringify(statsData.stats),
-              timestamp: Date.now(),
-              type: 'stats'
-            };
+      //       // Create a stats message
+      //       const statsMessage = {
+      //         id: Date.now().toString() + '-stats',
+      //         player: 'System',
+      //         content: JSON.stringify(statsData.stats),
+      //         timestamp: Date.now(),
+      //         type: 'stats'
+      //       };
 
-            // Save to in-memory array
-            messages.push(statsMessage);
+      //       // Save to in-memory array
+      //       messages.push(statsMessage);
 
-            // Save to MongoDB if connected
-            if (isMongoConnected) {
-              try {
-                await MessageModel.create(statsMessage);
-                console.log(`💾 Saved stats message to MongoDB`);
-              } catch (error) {
-                console.error('Error saving stats message to MongoDB:', error);
-              }
-            }
+      //       // Save to MongoDB if connected
+      //       if (isMongoConnected) {
+      //         try {
+      //           await MessageModel.create(statsMessage);
+      //           console.log(`💾 Saved stats message to MongoDB`);
+      //         } catch (error) {
+      //           console.error('Error saving stats message to MongoDB:', error);
+      //         }
+      //       }
 
-            io.emit('new-message', statsMessage);
-          }
-        } catch (error) {
-          console.error('Error fetching stats:', error);
-        }
-      }
+      //       io.emit('new-message', statsMessage);
+      //     }
+      //   } catch (error) {
+      //     console.error('Error fetching stats:', error);
+      //   }
+      // }
 
       // Check if message mentions @Lexi
       if (shouldSummonLexi) {
