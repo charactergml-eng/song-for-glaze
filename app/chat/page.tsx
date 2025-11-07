@@ -179,6 +179,7 @@ export default function ChatPage() {
   const [slaveRank, setSlaveRank] = useState<string>("slave");
   const [otherPlayerOnline, setOtherPlayerOnline] = useState(false);
   const [otherPlayerTyping, setOtherPlayerTyping] = useState(false);
+  const [otherPlayerTypingForLexi, setOtherPlayerTypingForLexi] = useState(false);
   const [lexiResponding, setLexiResponding] = useState(false);
   const [lexiTyping, setLexiTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -276,13 +277,18 @@ export default function ChatPage() {
         setOtherPlayerOnline(status[otherPlayer]);
       });
 
-      socketRef.current.on('user-typing', (player: string) => {
+      socketRef.current.on('user-typing', (data: string | { player: string; forLexi?: boolean }) => {
+        // Handle both old string format and new object format for backwards compatibility
+        const player = typeof data === 'string' ? data : data.player;
+        const forLexi = typeof data === 'object' ? data.forLexi : false;
+
         // Handle Lexi typing separately
         if (player === 'Lexi') {
           setLexiTyping(true);
         } else if (player !== selectedPlayer) {
           // Only show typing indicator if it's the other player
           setOtherPlayerTyping(true);
+          setOtherPlayerTypingForLexi(forLexi || false);
         }
       });
 
@@ -293,6 +299,7 @@ export default function ChatPage() {
         } else if (player !== selectedPlayer) {
           // Only hide typing indicator if it's the other player
           setOtherPlayerTyping(false);
+          setOtherPlayerTypingForLexi(false);
         }
       });
 
@@ -351,7 +358,7 @@ export default function ChatPage() {
       id: Date.now().toString(),
       player: selectedPlayer,
       content: isPromotion
-        ? `Player 2 has been promoted to ${newRank}`
+        ? `sub has been promoted to ${newRank}`
         : `Goddess has been demoted sub to ${newRank}`,
       timestamp: Date.now(),
       type: 'rank-change',
@@ -386,7 +393,13 @@ export default function ChatPage() {
 
     // Emit typing event
     if (socketRef.current && e.target.value.length > 0) {
-      socketRef.current.emit('typing', selectedPlayer);
+      // Check if the input contains @Lexi or @lexi
+      const containsLexiMention = /@lexi/i.test(e.target.value);
+
+      socketRef.current.emit('typing', {
+        player: selectedPlayer,
+        forLexi: containsLexiMention
+      });
 
       // Clear existing timeout
       if (typingTimeoutRef.current) {
@@ -428,6 +441,13 @@ export default function ChatPage() {
     return 'Type a message... (use @Lexi to summon the goddess)';
   };
 
+  // Helper to get display name for a player
+  const getDisplayName = (player: string) => {
+    if (player === 'Goddess') return 'Goddess';
+    if (player === 'Lexi') return 'Lexi';
+    return slaveRank;
+  };
+
   return (
     <main className="min-h-screen flex flex-col p-4 md:p-8">
       <motion.div
@@ -440,7 +460,7 @@ export default function ChatPage() {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-4">
             <h1 className="text-2xl md:text-3xl font-gothic text-gothic-crimson text-glow">
-              Chat Room - {selectedPlayer === 'Goddess' ? 'Goddess' : slaveRank}
+              Chat Room - {getDisplayName(selectedPlayer)}
             </h1>
           </div>
           <div className="flex items-center gap-4">
@@ -448,10 +468,10 @@ export default function ChatPage() {
             <div className={`flex items-center gap-2 ${otherPlayerOnline ? 'text-green-500' : 'text-gothic-bone/40'}`}>
               <div className={`w-2 h-2 rounded-full ${otherPlayerOnline ? 'bg-green-500 animate-pulse' : 'bg-gothic-bone/40'}`} />
               <span className="text-sm">
-                {selectedPlayer === 'Goddess' ? slaveRank : 'Goddess'} {otherPlayerOnline ? 'Online' : 'Offline'}
+                {getDisplayName(selectedPlayer === 'Goddess' ? 'slave' : 'Goddess')} {otherPlayerOnline ? 'Online' : 'Offline'}
               </span>
             </div>
-           
+
           </div>
         </div>
 
@@ -491,7 +511,7 @@ export default function ChatPage() {
                     // Action message - centered with special styling
                     <div className="flex flex-col items-center gap-1 max-w-[80%]">
                       <div className="text-gothic-crimson italic text-center wrap-break-word">
-                        {message.player === 'Goddess' ? 'Goddess' : slaveRank} {renderWithMentions(message.content)}
+                        {getDisplayName(message.player)} {renderWithMentions(message.content)}
                       </div>
                       <div className="text-xs text-gothic-bone/40">
                         {new Date(message.timestamp).toLocaleTimeString()}
@@ -525,7 +545,7 @@ export default function ChatPage() {
                         }`}
                       >
                         <div className="text-xs text-gothic-bone/80 mb-1 font-semibold">
-                          {message.player === 'Goddess' ? 'Goddess' : slaveRank}
+                          {getDisplayName(message.player)}
                         </div>
                         <div className="text-gothic-bone wrap-break-word">
                           {message.content}
@@ -564,7 +584,7 @@ export default function ChatPage() {
                         Lexi is typing...
                       </span>
                     ) : (
-                      `${selectedPlayer === 'Goddess' ? slaveRank : 'Goddess'} is typing...`
+                      `${getDisplayName(selectedPlayer === 'Goddess' ? 'slave' : 'Goddess')} is ${otherPlayerTypingForLexi ? 'typing for Lexi...' : 'typing...'}`
                     )}
                   </span>
                 </div>

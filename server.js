@@ -240,9 +240,11 @@ app.prepare().then(() => {
       }
     });
 
-    socket.on('typing', (player) => {
+    socket.on('typing', (data) => {
+      // Handle both old string format and new object format for backwards compatibility
+      const typingData = typeof data === 'string' ? { player: data, forLexi: false } : data;
       // Broadcast to all clients that this player is typing
-      io.emit('user-typing', player);
+      io.emit('user-typing', typingData);
     });
 
     socket.on('stopped-typing', (player) => {
