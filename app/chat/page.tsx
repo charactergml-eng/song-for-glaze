@@ -460,7 +460,7 @@ export default function ChatPage() {
     if (lexiResponding) {
       return 'Lexi is responding... Please wait.';
     }
-    return 'Type a message... (use @Lexi to summon the goddess)';
+    return 'Type a message...';
   };
 
   // Helper to get display name for a player

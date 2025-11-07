@@ -268,13 +268,15 @@ app.prepare().then(() => {
                 const impactChatMessage = {
                   id: Date.now().toString() + '-impact',
                   player: 'System',
-                  content: impactMessage,
+                  content: `Hunger: ${hungerChange} + Water: ${waterChange} + Health: ${healthChange}`,
                   timestamp: Date.now(),
                   type: 'action'
                 };
 
                 // Save to in-memory array
-                messages.push(impactChatMessage);
+                messages.push('Hunger: ' + hungerChange);
+                messages.push('Water: ' + waterChange);
+                messages.push('Health: ' + healthChange);
 
                 // Save to MongoDB if connected
                 if (isMongoConnected) {
