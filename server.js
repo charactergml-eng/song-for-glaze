@@ -138,7 +138,7 @@ app.prepare().then(() => {
 
     socket.on('send-message', async (message) => {
       // Check if message mentions @Lexi BEFORE adding to messages
-      const shouldSummonLexi = message.content.includes('@Lexi') && !lexiIsResponding;
+      const shouldSummonLexi = (message.content.includes('@Lexi') || message.content.includes('@lexi')) && !lexiIsResponding;
 
       // Save to in-memory array
       messages.push(message);
