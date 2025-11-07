@@ -182,6 +182,10 @@ export default function ChatPage() {
   const [otherPlayerTypingForLexi, setOtherPlayerTypingForLexi] = useState(false);
   const [lexiResponding, setLexiResponding] = useState(false);
   const [lexiTyping, setLexiTyping] = useState(false);
+  const [actionProcessing, setActionProcessing] = useState<{
+    player: 'Goddess' | 'slave' | null;
+    processing: boolean;
+  }>({ player: null, processing: false });
   const [slaveStats, setSlaveStats] = useState<{
     hunger: number;
     mood: string;
@@ -316,6 +320,11 @@ export default function ChatPage() {
       socketRef.current.on('stats-updated', (stats: any) => {
         console.log('📊 Stats updated:', stats);
         setSlaveStats(stats);
+      });
+
+      socketRef.current.on('action-processing', (data: { player: 'Goddess' | 'slave'; processing: boolean }) => {
+        console.log('🔄 Action processing:', data);
+        setActionProcessing({ player: data.player, processing: data.processing });
       });
 
       // If already connected, identify immediately
@@ -701,6 +710,31 @@ export default function ChatPage() {
                     ) : (
                       `${getDisplayName(selectedPlayer === 'Goddess' ? 'slave' : 'Goddess')} is ${otherPlayerTypingForLexi ? 'typing for Lexi...' : 'typing...'}`
                     )}
+                  </span>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Action processing indicator */}
+          <AnimatePresence>
+            {actionProcessing.processing && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="px-4 py-2 border-t border-gothic-darkRed/50 bg-gothic-darkRed/10"
+              >
+                <div className="flex items-center gap-2 text-xs text-gothic-bone/70">
+                  <div className="flex gap-1">
+                    <div className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <div className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <div className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </div>
+                  <span className="text-yellow-400">
+                    {actionProcessing.player === 'Goddess'
+                      ? 'AI is analyzing action and calculating stat changes...'
+                      : 'AI is analyzing action based on current stats...'}
                   </span>
                 </div>
               </motion.div>

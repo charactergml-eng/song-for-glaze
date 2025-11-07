@@ -143,6 +143,63 @@ app.prepare().then(() => {
       // Check if message mentions @stats
       const shouldShowStats = message.content.includes('@stats');
 
+      // Process slave actions through AI rephraser
+      if (message.player === 'slave' && message.type === 'action') {
+        try {
+          console.log(`🔄 Intercepting slave action: "${message.content}"`);
+
+          // Notify all clients that action is being processed
+          io.emit('action-processing', { player: 'slave', processing: true });
+
+          // Get current slave stats
+          const statsResponse = await fetch(`http://${hostname}:${port}/api/stats`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
+
+          if (statsResponse.ok) {
+            const statsData = await statsResponse.json();
+            console.log(`📊 Current slave stats:`, statsData.stats);
+
+            // Call the action rephraser AI
+            const rephraseResponse = await fetch(`http://${hostname}:${port}/api/stats/rephrase-action`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                action: message.content,
+                stats: statsData.stats,
+              }),
+            });
+
+            if (rephraseResponse.ok) {
+              const rephraseData = await rephraseResponse.json();
+              const rephrasedAction = rephraseData.rephrasedAction;
+
+              console.log(`✍️ Action rephrased from "${message.content}" to "${rephrasedAction}"`);
+
+              // Replace the message content with the rephrased action
+              message.content = rephrasedAction;
+            } else {
+              console.error('Failed to rephrase action:', rephraseResponse.statusText);
+            }
+          } else {
+            console.error('Failed to fetch stats:', statsResponse.statusText);
+          }
+
+          // Notify all clients that action processing is complete
+          io.emit('action-processing', { player: 'slave', processing: false });
+        } catch (error) {
+          console.error('Error processing slave action:', error);
+          // Notify all clients that action processing is complete even on error
+          io.emit('action-processing', { player: 'slave', processing: false });
+          // If error occurs, continue with original action
+        }
+      }
+
       // Save to in-memory array
       messages.push(message);
 
@@ -162,6 +219,9 @@ app.prepare().then(() => {
       if (message.player === 'Goddess' && (message.type === 'action' || message.type === 'rank-change')) {
         try {
           console.log(`📊 Processing stat changes for ${message.type}: ${message.content}`);
+
+          // Notify all clients that action is being processed
+          io.emit('action-processing', { player: 'Goddess', processing: true });
 
           // Call the stat processor AI
           const statProcessResponse = await fetch(`http://${hostname}:${port}/api/stats/process-action`, {
@@ -231,8 +291,13 @@ app.prepare().then(() => {
               }
             }
           }
+
+          // Notify all clients that action processing is complete
+          io.emit('action-processing', { player: 'Goddess', processing: false });
         } catch (error) {
           console.error('Error processing stat changes:', error);
+          // Notify all clients that action processing is complete even on error
+          io.emit('action-processing', { player: 'Goddess', processing: false });
         }
       }
 
