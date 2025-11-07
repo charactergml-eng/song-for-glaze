@@ -582,8 +582,7 @@ export default function ChatPage() {
                                 <div className="space-y-1">
                                   <div className="flex items-center justify-between text-sm">
                                     <div className="flex items-center gap-2">
-                                      <Heart className="w-4 h-4 text-gothic-crimson" />
-                                      <span className="text-gothic-bone">Hunger</span>
+                                      <span className="text-gothic-bone">🍽️ Hunger</span>
                                     </div>
                                     <span className="text-gothic-bone font-semibold">{stats.hunger}/100</span>
                                   </div>
