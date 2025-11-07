@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { getSocket, disconnectSocket } from "@/lib/socket-client";
 import { Message } from "@/lib/socket";
-import { Send, Zap, Crown, ArrowLeft } from "lucide-react";
+import { Send, Zap, Crown, ArrowLeft, Heart, Droplet, Activity, Smile } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 
 // Action form component
@@ -182,6 +182,12 @@ export default function ChatPage() {
   const [otherPlayerTypingForLexi, setOtherPlayerTypingForLexi] = useState(false);
   const [lexiResponding, setLexiResponding] = useState(false);
   const [lexiTyping, setLexiTyping] = useState(false);
+  const [slaveStats, setSlaveStats] = useState<{
+    hunger: number;
+    mood: string;
+    water: number;
+    health: number;
+  } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const socketRef = useRef<ReturnType<typeof getSocket> | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -305,6 +311,11 @@ export default function ChatPage() {
 
       socketRef.current.on('lexi-responding', (isResponding: boolean) => {
         setLexiResponding(isResponding);
+      });
+
+      socketRef.current.on('stats-updated', (stats: any) => {
+        console.log('📊 Stats updated:', stats);
+        setSlaveStats(stats);
       });
 
       // If already connected, identify immediately
@@ -459,9 +470,9 @@ export default function ChatPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-4">
-            <h1 className="text-2xl md:text-3xl font-gothic text-gothic-crimson text-glow">
+            {/* <h1 className="text-2xl md:text-3xl font-gothic text-gothic-crimson text-glow">
               Chat Room - {getDisplayName(selectedPlayer)}
-            </h1>
+            </h1> */}
           </div>
           <div className="flex items-center gap-4">
             {/* Other player online status */}
@@ -529,6 +540,105 @@ export default function ChatPage() {
                             {message.rankChange.oldRank} → {message.rankChange.newRank}
                           </div>
                         )}
+                      </div>
+                      <div className="text-xs text-gothic-bone/40">
+                        {new Date(message.timestamp).toLocaleTimeString()}
+                      </div>
+                    </div>
+                  ) : message.type === 'stats' ? (
+                    // Stats message - special card display
+                    <div className="flex flex-col items-center gap-1 w-full max-w-md">
+                      <div className="bg-gradient-to-br from-gothic-darkRed/30 to-gothic-black/50 border-2 border-gothic-crimson/50 rounded-lg px-4 py-3 w-full shadow-lg">
+                        <div className="text-center mb-3">
+                          <h3 className="text-gothic-crimson font-bold text-lg">{getDisplayName('slave')} Stats</h3>
+                        </div>
+                        {(() => {
+                          try {
+                            const stats = JSON.parse(message.content);
+                            const getMoodColor = (mood: string) => {
+                              switch (mood) {
+                                case 'happy': return 'text-green-400';
+                                case 'sad': return 'text-yellow-400';
+                                case 'depressed': return 'text-orange-400';
+                                case 'miserable': return 'text-red-400';
+                                default: return 'text-gothic-bone';
+                              }
+                            };
+                            const getStatColor = (value: number) => {
+                              if (value >= 70) return 'bg-green-500';
+                              if (value >= 50) return 'bg-yellow-500';
+                              if (value >= 30) return 'bg-orange-500';
+                              return 'bg-red-500';
+                            };
+                            return (
+                              <div className="space-y-3">
+                                {/* Hunger */}
+                                <div className="space-y-1">
+                                  <div className="flex items-center justify-between text-sm">
+                                    <div className="flex items-center gap-2">
+                                      <Heart className="w-4 h-4 text-gothic-crimson" />
+                                      <span className="text-gothic-bone">Hunger</span>
+                                    </div>
+                                    <span className="text-gothic-bone font-semibold">{stats.hunger}/100</span>
+                                  </div>
+                                  <div className="w-full bg-gothic-black/50 rounded-full h-2">
+                                    <div className={`h-2 rounded-full transition-all ${getStatColor(stats.hunger)}`} style={{ width: `${stats.hunger}%` }} />
+                                  </div>
+                                </div>
+
+                                {/* Water */}
+                                <div className="space-y-1">
+                                  <div className="flex items-center justify-between text-sm">
+                                    <div className="flex items-center gap-2">
+                                      <Droplet className="w-4 h-4 text-blue-400" />
+                                      <span className="text-gothic-bone">Water</span>
+                                    </div>
+                                    <span className="text-gothic-bone font-semibold">{stats.water}/100</span>
+                                  </div>
+                                  <div className="w-full bg-gothic-black/50 rounded-full h-2">
+                                    <div className={`h-2 rounded-full transition-all ${getStatColor(stats.water)}`} style={{ width: `${stats.water}%` }} />
+                                  </div>
+                                </div>
+
+                                {/* Health */}
+                                <div className="space-y-1">
+                                  <div className="flex items-center justify-between text-sm">
+                                    <div className="flex items-center gap-2">
+                                      <Activity className="w-4 h-4 text-purple-400" />
+                                      <span className="text-gothic-bone">Health</span>
+                                    </div>
+                                    <span className="text-gothic-bone font-semibold">{stats.health}/100</span>
+                                  </div>
+                                  <div className="w-full bg-gothic-black/50 rounded-full h-2">
+                                    <div className={`h-2 rounded-full transition-all ${getStatColor(stats.health)}`} style={{ width: `${stats.health}%` }} />
+                                  </div>
+                                </div>
+
+                                {/* Mood */}
+                                <div className="space-y-1 pt-2 border-t border-gothic-crimson/30">
+                                  <div className="flex items-center justify-between text-sm">
+                                    <div className="flex items-center gap-2">
+                                      {stats.mood === 'happy' && <Smile className="w-5 h-5 text-green-400" />}
+                                      {stats.mood === 'sad' && (
+                                        <span className="text-base">🥺</span>
+                                      )}
+                                      {stats.mood === 'depressed' && (
+                                        <span className="text-base">😔</span>
+                                      )}
+                                      {stats.mood === 'miserable' && (
+                                        <span className="text-base">😢</span>
+                                      )}
+                                      <span className="text-gothic-bone">Mood</span>
+                                    </div>
+                                    <span className={`font-semibold capitalize ${getMoodColor(stats.mood)}`}>{stats.mood}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          } catch (e) {
+                            return <div className="text-gothic-bone/60 text-sm">Error loading stats</div>;
+                          }
+                        })()}
                       </div>
                       <div className="text-xs text-gothic-bone/40">
                         {new Date(message.timestamp).toLocaleTimeString()}

@@ -2,10 +2,10 @@ import mongoose, { Schema, Model } from 'mongoose';
 
 export interface IMessage {
   id: string;
-  player: 'Goddess' | 'slave' | 'Lexi';
+  player: 'Goddess' | 'slave' | 'Lexi' | 'System';
   content: string;
   timestamp: number;
-  type: 'message' | 'action' | 'rank-change' | 'ai';
+  type: 'message' | 'action' | 'rank-change' | 'ai' | 'stats';
   rankChange?: {
     oldRank: string;
     newRank: string;
@@ -14,10 +14,10 @@ export interface IMessage {
 
 const MessageSchema = new Schema<IMessage>({
   id: { type: String, required: true, unique: true },
-  player: { type: String, required: true, enum: ['Goddess', 'slave', 'Lexi'] },
+  player: { type: String, required: true, enum: ['Goddess', 'slave', 'Lexi', 'System'] },
   content: { type: String, required: true },
   timestamp: { type: Number, required: true },
-  type: { type: String, required: true, enum: ['message', 'action', 'rank-change', 'ai'] },
+  type: { type: String, required: true, enum: ['message', 'action', 'rank-change', 'ai', 'stats'] },
   rankChange: {
     type: {
       oldRank: String,

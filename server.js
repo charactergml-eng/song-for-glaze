@@ -140,6 +140,9 @@ app.prepare().then(() => {
       // Check if message mentions @Lexi BEFORE adding to messages
       const shouldSummonLexi = (message.content.includes('@Lexi') || message.content.includes('@lexi')) && !lexiIsResponding;
 
+      // Check if message mentions @stats
+      const shouldShowStats = message.content.includes('@stats');
+
       // Save to in-memory array
       messages.push(message);
 
@@ -154,6 +157,100 @@ app.prepare().then(() => {
       }
 
       io.emit('new-message', message);
+
+      // Process stat changes if Goddess sends an action or rank change
+      if (message.player === 'Goddess' && (message.type === 'action' || message.type === 'rank-change')) {
+        try {
+          console.log(`📊 Processing stat changes for ${message.type}: ${message.content}`);
+
+          // Call the stat processor AI
+          const statProcessResponse = await fetch(`http://${hostname}:${port}/api/stats/process-action`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              action: message.content,
+              actionType: message.type,
+            }),
+          });
+
+          if (statProcessResponse.ok) {
+            const statData = await statProcessResponse.json();
+            const { hungerChange, waterChange, healthChange } = statData.changes;
+
+            console.log(`📊 AI determined stat changes:`, statData.changes);
+
+            // Apply the stat changes
+            const applyStatsResponse = await fetch(`http://${hostname}:${port}/api/stats`, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                hungerChange,
+                waterChange,
+                healthChange,
+              }),
+            });
+
+            if (applyStatsResponse.ok) {
+              const updatedStats = await applyStatsResponse.json();
+              console.log(`✅ Updated slave stats:`, updatedStats.stats);
+
+              // Broadcast stat update to all clients
+              io.emit('stats-updated', updatedStats.stats);
+            }
+          }
+        } catch (error) {
+          console.error('Error processing stat changes:', error);
+        }
+      }
+
+      // Handle @stats command
+      if (shouldShowStats) {
+        try {
+          console.log(`📊 Fetching stats for @stats command`);
+
+          const statsResponse = await fetch(`http://${hostname}:${port}/api/stats`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
+
+          if (statsResponse.ok) {
+            const statsData = await statsResponse.json();
+            console.log(`📊 Current stats:`, statsData.stats);
+
+            // Create a stats message
+            const statsMessage = {
+              id: Date.now().toString() + '-stats',
+              player: 'System',
+              content: JSON.stringify(statsData.stats),
+              timestamp: Date.now(),
+              type: 'stats'
+            };
+
+            // Save to in-memory array
+            messages.push(statsMessage);
+
+            // Save to MongoDB if connected
+            if (isMongoConnected) {
+              try {
+                await MessageModel.create(statsMessage);
+                console.log(`💾 Saved stats message to MongoDB`);
+              } catch (error) {
+                console.error('Error saving stats message to MongoDB:', error);
+              }
+            }
+
+            io.emit('new-message', statsMessage);
+          }
+        } catch (error) {
+          console.error('Error fetching stats:', error);
+        }
+      }
 
       // Check if message mentions @Lexi
       if (shouldSummonLexi) {
