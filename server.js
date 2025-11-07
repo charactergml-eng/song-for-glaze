@@ -178,8 +178,10 @@ app.prepare().then(() => {
           if (statProcessResponse.ok) {
             const statData = await statProcessResponse.json();
             const { hungerChange, waterChange, healthChange } = statData.changes;
+            const impactMessage = statData.impactMessage;
 
             console.log(`📊 AI determined stat changes:`, statData.changes);
+            console.log(`💬 Impact message:`, impactMessage);
 
             // Apply the stat changes
             const applyStatsResponse = await fetch(`http://${hostname}:${port}/api/stats`, {
@@ -200,6 +202,33 @@ app.prepare().then(() => {
 
               // Broadcast stat update to all clients
               io.emit('stats-updated', updatedStats.stats);
+
+              // Send the impact message to chat if it exists
+              if (impactMessage) {
+                const impactChatMessage = {
+                  id: Date.now().toString() + '-impact',
+                  player: 'System',
+                  content: impactMessage,
+                  timestamp: Date.now(),
+                  type: 'action'
+                };
+
+                // Save to in-memory array
+                messages.push(impactChatMessage);
+
+                // Save to MongoDB if connected
+                if (isMongoConnected) {
+                  try {
+                    await MessageModel.create(impactChatMessage);
+                    console.log(`💾 Saved impact message to MongoDB`);
+                  } catch (error) {
+                    console.error('Error saving impact message to MongoDB:', error);
+                  }
+                }
+
+                // Broadcast the impact message to all clients
+                io.emit('new-message', impactChatMessage);
+              }
             }
           }
         } catch (error) {

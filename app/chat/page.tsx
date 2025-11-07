@@ -522,7 +522,13 @@ export default function ChatPage() {
                     // Action message - centered with special styling
                     <div className="flex flex-col items-center gap-1 max-w-[80%]">
                       <div className="text-gothic-crimson italic text-center wrap-break-word">
-                        {getDisplayName(message.player)} {renderWithMentions(message.content)}
+                        {message.player === 'System' ? (
+                          // System impact messages don't need player name prefix
+                          renderWithMentions(message.content)
+                        ) : (
+                          // Regular action messages show player name
+                          <>{getDisplayName(message.player)} {renderWithMentions(message.content)}</>
+                        )}
                       </div>
                       <div className="text-xs text-gothic-bone/40">
                         {new Date(message.timestamp).toLocaleTimeString()}

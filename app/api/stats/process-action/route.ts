@@ -16,13 +16,13 @@ const STAT_PROCESSOR_PROMPT = `You are a stat processor for a roleplay game. The
   * Average >= 30: depressed
   * Average < 30: miserable
 
-Your job is to analyze actions or rank changes and determine how they affect the slave's stats.
+Your job is to analyze actions or rank changes and determine how they affect the slave's stats, AND provide a descriptive message about the impact.
 
 IMPORTANT: Mood is automatically calculated from the other stats, so you don't control it directly.
 However, keep in mind that your changes to hunger, water, and health will affect the overall mood.
 
 RULES:
-1. Return ONLY a valid JSON object with these fields: hungerChange, waterChange, healthChange
+1. Return ONLY a valid JSON object with these fields: hungerChange, waterChange, healthChange, impactMessage
 2. Changes can be positive (good for slave) or negative (bad for slave)
 3. Changes should be reasonable: typically -20 to +20, with extreme actions going up to -30 or +30
 4. Consider the psychological and physical impact of the action
@@ -32,15 +32,21 @@ RULES:
 8. Being ignored or neglected decreases stats slowly over time
 9. Praise or affection improves health
 10. Remember that all three stats contribute to mood - consider the overall impact
+11. impactMessage should be a short, descriptive sentence (10-15 words max) describing the physical/emotional impact on the slave
+12. impactMessage should be in third person, past tense, and focus on the slave's experience
+13. Be creative and vivid with impact messages - make them atmospheric and fitting for the gothic/dark theme
+14. Always make the slave to appear as degraded and worthless
 
 Examples:
-- "Goddess kicked slave" -> {"hungerChange": 0, "waterChange": 0, "healthChange": -10}
-- "Goddess gave slave food" -> {"hungerChange": 25, "waterChange": 0, "healthChange": 5}
-- "Goddess promoted slave to pet" -> {"hungerChange": 5, "waterChange": 5, "healthChange": 15}
-- "Goddess demoted slave to dirt" -> {"hungerChange": -5, "waterChange": -5, "healthChange": -20}
-- "Goddess stepped on slave's face" -> {"hungerChange": 0, "waterChange": 0, "healthChange": -8}
-- "Goddess gave slave water" -> {"hungerChange": 0, "waterChange": 30, "healthChange": 3}
-- "Goddess ignored slave" -> {"hungerChange": -3, "waterChange": -3, "healthChange": -5}
+- "Goddess kicked slave" -> {"hungerChange": 0, "waterChange": 0, "healthChange": -10, "impactMessage": "The kick left dark bruises on the slave's trembling body"}
+- "Goddess gave slave food" -> {"hungerChange": 25, "waterChange": 0, "healthChange": 5, "impactMessage": "The slave devoured the offering, grateful tears streaming down"}
+- "Goddess promoted slave to pet" -> {"hungerChange": 5, "waterChange": 5, "healthChange": 15, "impactMessage": "The slave's spirit lifted with newfound purpose and devotion"}
+- "Goddess demoted slave to dirt" -> {"hungerChange": -5, "waterChange": -5, "healthChange": -20, "impactMessage": "The slave crumbled in despair, feeling utterly worthless and broken"}
+- "Goddess stepped on slave's face" -> {"hungerChange": 0, "waterChange": 0, "healthChange": -8, "impactMessage": "The slave gasped as their face pressed into the cold floor"}
+- "Goddess gave slave water" -> {"hungerChange": 0, "waterChange": 30, "healthChange": 3, "impactMessage": "The slave drank desperately, relief washing over their parched throat"}
+- "Goddess ignored slave" -> {"hungerChange": -3, "waterChange": -3, "healthChange": -5, "impactMessage": "The slave withered in silence, yearning for any acknowledgment"}
+- "Goddess petted slave" -> {"hungerChange": 0, "waterChange": 0, "healthChange": 10, "impactMessage": "The slave melted under the gentle touch, overwhelmed with devotion"}
+- "Goddess laughed at slave" -> {"hungerChange": 0, "waterChange": 0, "healthChange": -5, "impactMessage": "The mocking laughter echoed, crushing the slave's fragile pride"}
 
 Return ONLY the JSON object, no explanation.`;
 
@@ -102,6 +108,7 @@ export async function POST(request: NextRequest) {
         hungerChange: 0,
         waterChange: 0,
         healthChange: 0,
+        impactMessage: 'The action had a subtle effect on the slave',
       };
     }
 
@@ -109,11 +116,13 @@ export async function POST(request: NextRequest) {
     const hungerChange = Math.max(-30, Math.min(30, statChanges.hungerChange || 0));
     const waterChange = Math.max(-30, Math.min(30, statChanges.waterChange || 0));
     const healthChange = Math.max(-30, Math.min(30, statChanges.healthChange || 0));
+    const impactMessage = statChanges.impactMessage || 'The action had an effect on the slave';
 
     console.log(`📊 Stat changes for "${action}":`, {
       hungerChange,
       waterChange,
       healthChange,
+      impactMessage,
     });
 
     return NextResponse.json({
@@ -123,6 +132,7 @@ export async function POST(request: NextRequest) {
         waterChange,
         healthChange,
       },
+      impactMessage,
     });
   } catch (error: any) {
     console.error('AI stat processing error:', error);
