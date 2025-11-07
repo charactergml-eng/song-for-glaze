@@ -172,6 +172,7 @@ export default function ChatPage() {
   const { user, isLoading, logout } = useAuth();
   const selectedPlayer = user?.role as 'Goddess' | 'slave'; // Use authenticated user's role
   const [messages, setMessages] = useState<Message[]>([]);
+  const [messagesLoading, setMessagesLoading] = useState(true);
   const [inputValue, setInputValue] = useState("");
   const [showActionMenu, setShowActionMenu] = useState(false);
   const [showRankMenu, setShowRankMenu] = useState(false);
@@ -254,6 +255,7 @@ export default function ChatPage() {
 
       socketRef.current.on('load-messages', (loadedMessages: Message[]) => {
         setMessages(loadedMessages);
+        setMessagesLoading(false);
       });
 
       socketRef.current.on('new-message', (message: Message) => {
@@ -479,9 +481,9 @@ export default function ChatPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-4">
-            {/* <h1 className="text-2xl md:text-3xl font-gothic text-gothic-crimson text-glow">
+            <h1 className="text-2xl md:text-3xl font-gothic text-gothic-crimson text-glow">
               Chat Room - {getDisplayName(selectedPlayer)}
-            </h1> */}
+            </h1>
           </div>
           <div className="flex items-center gap-4">
             {/* Other player online status */}
@@ -502,8 +504,20 @@ export default function ChatPage() {
               className="fixed inset-0 bg-cover bg-center bg-no-repeat opacity-20 pointer-events-none"
               style={{ backgroundImage: 'url(/queen-bg.png)' }}
             />
-            <AnimatePresence>
-              {messages.map((message) => (
+            {messagesLoading ? (
+              <div className="flex items-center justify-center h-full relative z-10">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="flex gap-2">
+                    <div className="w-3 h-3 rounded-full bg-gothic-crimson animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <div className="w-3 h-3 rounded-full bg-gothic-crimson animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <div className="w-3 h-3 rounded-full bg-gothic-crimson animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </div>
+                  <span className="text-gothic-crimson text-sm">Loading messages...</span>
+                </div>
+              </div>
+            ) : (
+              <AnimatePresence>
+                {messages.map((message) => (
                 <motion.div
                   key={message.id}
                   initial={{ opacity: 0, y: 10 }}
@@ -682,7 +696,8 @@ export default function ChatPage() {
                   )}
                 </motion.div>
               ))}
-            </AnimatePresence>
+              </AnimatePresence>
+            )}
             <div ref={messagesEndRef} className="relative z-10" />
           </CardContent>
 

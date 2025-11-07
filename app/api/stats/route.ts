@@ -39,10 +39,10 @@ export async function GET() {
       // Create initial stats if they don't exist
       stats = await SlaveStatsModel.create({
         userId: 'slave',
-        hunger: 50,
+        hunger: 100,
         mood: 'happy',
-        water: 50,
-        health: 70,
+        water: 100,
+        health: 100,
         lastUpdated: Date.now(),
       });
     } else {
