@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 
 // Simple in-memory user database
 const USERS = {
-  'Goddess': { username: 'Goddess', password: 'goddess', role: 'Goddess' as const },
+  'Goddess': { username: 'Goddess', password: 'Steponyou', role: 'Goddess' as const },
   'Slave': { username: 'Slave', password: 'slave', role: 'slave' as const },
 };
 
