@@ -60,6 +60,8 @@ app.prepare().then(() => {
 
   // Track if Lexi (AI) is currently generating a response
   let lexiIsResponding = false;
+  // Track if Sumi (AI) is currently generating a response
+  let sumiIsResponding = false;
 
   // Track all connected visitors (sockets)
   const connectedVisitors = new Set();
@@ -139,6 +141,9 @@ app.prepare().then(() => {
     socket.on('send-message', async (message) => {
       // Check if message mentions @Lexi BEFORE adding to messages
       const shouldSummonLexi = (message.content.includes('@Lexi') || message.content.includes('@lexi')) && !lexiIsResponding;
+
+      // Check if message mentions @Sumi
+      const shouldSummonSumi = (message.content.includes('@Sumi') || message.content.includes('@sumi')) && !sumiIsResponding && !lexiIsResponding;
 
       // Check if message mentions @stats
       const shouldShowStats = message.content.includes('@stats');
@@ -419,6 +424,79 @@ app.prepare().then(() => {
             }
 
             io.emit('new-message', lexiMessage);
+
+            // Check if Lexi mentioned Sumi in her response
+            const lexiMentionedSumi = /\bSUMI\b/i.test(data.reply);
+
+            if (lexiMentionedSumi && !sumiIsResponding) {
+              console.log('🐱 Lexi mentioned Sumi! Triggering auto-response...');
+
+              // Wait a brief moment for dramatic effect
+              await new Promise(resolve => setTimeout(resolve, 1000));
+
+              // Trigger Sumi's auto-response
+              sumiIsResponding = true;
+              io.emit('sumi-responding', true);
+              io.emit('user-typing', 'Sumi');
+
+              try {
+                // Get updated conversation history including Lexi's message
+                const sumiConversationHistory = messages.slice(-20);
+
+                // Call Sumi's AI API with context that he was mentioned by Lexi
+                const sumiResponse = await fetch(`http://${hostname}:${port}/api/ai-sumi`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    message: `Lexi: ${data.reply}`,
+                    conversationHistory: sumiConversationHistory,
+                    lexiJustMentionedSumi: true,
+                  }),
+                });
+
+                if (sumiResponse.ok) {
+                  const sumiData = await sumiResponse.json();
+
+                  // Stop typing indicator
+                  io.emit('user-stopped-typing', 'Sumi');
+
+                  // Create Sumi's message
+                  const sumiMessage = {
+                    id: Date.now().toString(),
+                    player: 'Sumi',
+                    content: sumiData.reply,
+                    timestamp: Date.now(),
+                    type: 'ai'
+                  };
+
+                  // Save to in-memory array
+                  messages.push(sumiMessage);
+
+                  // Save to MongoDB if connected
+                  if (isMongoConnected) {
+                    try {
+                      await MessageModel.create(sumiMessage);
+                      console.log(`💾 Saved Sumi's auto-response to MongoDB`);
+                    } catch (error) {
+                      console.error('Error saving Sumi message to MongoDB:', error);
+                    }
+                  }
+
+                  io.emit('new-message', sumiMessage);
+                } else {
+                  console.error('Sumi AI API error:', sumiResponse.statusText);
+                  io.emit('user-stopped-typing', 'Sumi');
+                }
+              } catch (error) {
+                console.error('Error calling Sumi AI API:', error);
+                io.emit('user-stopped-typing', 'Sumi');
+              } finally {
+                sumiIsResponding = false;
+                io.emit('sumi-responding', false);
+              }
+            }
           } else {
             console.error('AI API error:', response.statusText);
             io.emit('user-stopped-typing', 'Lexi');
@@ -429,6 +507,90 @@ app.prepare().then(() => {
         } finally {
           lexiIsResponding = false;
           io.emit('lexi-responding', false);
+        }
+      }
+
+      // Check if message mentions @Sumi (direct mention by user)
+      if (shouldSummonSumi) {
+        sumiIsResponding = true;
+
+        // Emit reply-lock status to all clients
+        io.emit('sumi-responding', true);
+
+        // Simulate Sumi typing
+        io.emit('user-typing', 'Sumi');
+
+        try {
+          // Strip @Sumi mention from the message
+          const strippedMessage = message.content.replace(/@Sumi\s*/gi, '').trim();
+
+          // Format the current message with the player's name
+          let playerName = '';
+          if (message.player === 'Goddess') {
+            playerName = 'Goddess Batoul';
+          } else if (message.player === 'slave') {
+            playerName = 'Slave Hasan';
+          } else {
+            playerName = `Slave ${message.player}`;
+          }
+
+          const userMessage = `${playerName}: ${strippedMessage}`;
+
+          // Get conversation history EXCLUDING the message we just added
+          const conversationHistory = messages.slice(0, -1).slice(-20);
+
+          // Call Sumi's AI API
+          const response = await fetch(`http://${hostname}:${port}/api/ai-sumi`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              message: userMessage,
+              conversationHistory: conversationHistory,
+              lexiJustMentionedSumi: false,
+            }),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+
+            // Stop typing indicator
+            io.emit('user-stopped-typing', 'Sumi');
+
+            // Create Sumi's message
+            const sumiMessage = {
+              id: Date.now().toString(),
+              player: 'Sumi',
+              content: data.reply,
+              timestamp: Date.now(),
+              type: 'ai'
+            };
+
+            // Save to in-memory array
+            messages.push(sumiMessage);
+
+            // Save to MongoDB if connected
+            if (isMongoConnected) {
+              try {
+                await MessageModel.create(sumiMessage);
+                console.log(`💾 Saved Sumi's response to MongoDB`);
+              } catch (error) {
+                console.error('Error saving Sumi message to MongoDB:', error);
+              }
+            }
+
+            io.emit('new-message', sumiMessage);
+          } else {
+            console.error('Sumi AI API error:', response.statusText);
+            io.emit('user-stopped-typing', 'Sumi');
+          }
+        } catch (error) {
+          console.error('Error calling Sumi AI API:', error);
+          io.emit('user-stopped-typing', 'Sumi');
+        } finally {
+          sumiIsResponding = false;
+          io.emit('sumi-responding', false);
         }
       }
     });

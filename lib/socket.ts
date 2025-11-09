@@ -12,7 +12,7 @@ export type NextApiResponseServerIO = NextApiResponse & {
 
 export interface Message {
   id: string;
-  player: 'Goddess' | 'slave' | 'Lexi' | 'System';
+  player: 'Goddess' | 'slave' | 'Lexi' | 'Sumi' | 'System';
   content: string;
   timestamp: number;
   type: 'message' | 'action' | 'rank-change' | 'ai' | 'stats';
