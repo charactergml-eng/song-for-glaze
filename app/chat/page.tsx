@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
-import { useRouter } from "next/navigation";
 import { getSocket, disconnectSocket } from "@/lib/socket-client";
 import { Message } from "@/lib/socket";
-import { Send, ArrowLeft, Heart, Zap, Crown, ChevronDown } from "lucide-react";
+import { Send, Zap, Crown, ArrowLeft, Heart, Droplet, Activity, Smile } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
 
 // Action form component
 function ActionForm({
@@ -44,7 +44,7 @@ function ActionForm({
       {/* Action input */}
       <div>
         <label className="text-xs text-gothic-bone/60 mb-1 block">
-          Action (use @Goddess or @{slaveRank} to mention)
+          Action (use @Goddess, @{slaveRank}, @Lexi, or @Sumi to mention)
         </label>
         <input
           type="text"
@@ -169,9 +169,10 @@ function RankChangeForm({
 }
 
 export default function ChatPage() {
-  const router = useRouter();
-  const [selectedPlayer, setSelectedPlayer] = useState<'Goddess' | 'slave' | null>(null);
+  const { user, isLoading, logout } = useAuth();
+  const selectedPlayer = user?.role as 'Goddess' | 'slave'; // Use authenticated user's role
   const [messages, setMessages] = useState<Message[]>([]);
+  const [messagesLoading, setMessagesLoading] = useState(true);
   const [inputValue, setInputValue] = useState("");
   const [showActionMenu, setShowActionMenu] = useState(false);
   const [showRankMenu, setShowRankMenu] = useState(false);
@@ -179,27 +180,43 @@ export default function ChatPage() {
   const [slaveRank, setSlaveRank] = useState<string>("slave");
   const [otherPlayerOnline, setOtherPlayerOnline] = useState(false);
   const [otherPlayerTyping, setOtherPlayerTyping] = useState(false);
+  const [otherPlayerTypingForLexi, setOtherPlayerTypingForLexi] = useState(false);
   const [lexiResponding, setLexiResponding] = useState(false);
   const [lexiTyping, setLexiTyping] = useState(false);
+  const [sumiResponding, setSumiResponding] = useState(false);
+  const [sumiTyping, setSumiTyping] = useState(false);
+  const [actionProcessing, setActionProcessing] = useState<{
+    player: 'Goddess' | 'slave' | null;
+    processing: boolean;
+  }>({ player: null, processing: false });
+  const [slaveStats, setSlaveStats] = useState<{
+    hunger: number;
+    mood: string;
+    water: number;
+    health: number;
+  } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const socketRef = useRef<ReturnType<typeof getSocket> | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Helper function to render text with highlighted mentions
   const renderWithMentions = (text: string) => {
-    // Match @Goddess, @Lexi or @{any text} patterns
+    // Match @Goddess, @Lexi, @Sumi or @{any text} patterns
     const parts = text.split(/(@\w+)/g);
 
     return parts.map((part, index) => {
       if (part.startsWith('@')) {
         const mentionText = part.substring(1); // Remove the @
         const isLexi = mentionText === 'Lexi';
+        const isSumi = mentionText === 'Sumi';
         return (
           <span
             key={index}
             className={`font-bold px-1 rounded ${
               isLexi
                 ? 'text-purple-300 bg-purple-900/50'
+                : isSumi
+                ? 'text-blue-300 bg-blue-900/50'
                 : 'text-gothic-bone bg-gothic-darkRed/50'
             }`}
           >
@@ -211,7 +228,7 @@ export default function ChatPage() {
     });
   };
 
-  // Load rank from blob on mount
+  // Load rank from blob on mount - MUST be before conditional returns
   useEffect(() => {
     const loadRank = async () => {
       try {
@@ -243,6 +260,7 @@ export default function ChatPage() {
 
       socketRef.current.on('load-messages', (loadedMessages: Message[]) => {
         setMessages(loadedMessages);
+        setMessagesLoading(false);
       });
 
       socketRef.current.on('new-message', (message: Message) => {
@@ -276,13 +294,21 @@ export default function ChatPage() {
         setOtherPlayerOnline(status[otherPlayer]);
       });
 
-      socketRef.current.on('user-typing', (player: string) => {
+      socketRef.current.on('user-typing', (data: string | { player: string; forLexi?: boolean }) => {
+        // Handle both old string format and new object format for backwards compatibility
+        const player = typeof data === 'string' ? data : data.player;
+        const forLexi = typeof data === 'object' ? data.forLexi : false;
+
         // Handle Lexi typing separately
         if (player === 'Lexi') {
           setLexiTyping(true);
+        } else if (player === 'Sumi') {
+          // Handle Sumi typing separately
+          setSumiTyping(true);
         } else if (player !== selectedPlayer) {
           // Only show typing indicator if it's the other player
           setOtherPlayerTyping(true);
+          setOtherPlayerTypingForLexi(forLexi || false);
         }
       });
 
@@ -290,14 +316,32 @@ export default function ChatPage() {
         // Handle Lexi typing separately
         if (player === 'Lexi') {
           setLexiTyping(false);
+        } else if (player === 'Sumi') {
+          // Handle Sumi typing separately
+          setSumiTyping(false);
         } else if (player !== selectedPlayer) {
           // Only hide typing indicator if it's the other player
           setOtherPlayerTyping(false);
+          setOtherPlayerTypingForLexi(false);
         }
       });
 
       socketRef.current.on('lexi-responding', (isResponding: boolean) => {
         setLexiResponding(isResponding);
+      });
+
+      socketRef.current.on('sumi-responding', (isResponding: boolean) => {
+        setSumiResponding(isResponding);
+      });
+
+      socketRef.current.on('stats-updated', (stats: any) => {
+        console.log('📊 Stats updated:', stats);
+        setSlaveStats(stats);
+      });
+
+      socketRef.current.on('action-processing', (data: { player: 'Goddess' | 'slave'; processing: boolean }) => {
+        console.log('🔄 Action processing:', data);
+        setActionProcessing({ player: data.player, processing: data.processing });
       });
 
       // If already connected, identify immediately
@@ -314,6 +358,20 @@ export default function ChatPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return (
+      <main className="min-h-screen flex items-center justify-center">
+        <div className="text-gothic-crimson text-glow">Loading...</div>
+      </main>
+    );
+  }
+
+  // Redirect will be handled by AuthProvider, but we can show nothing while redirecting
+  if (!user) {
+    return null;
+  }
 
   const handleSendAction = (action: string) => {
     if (!selectedPlayer || !socketRef.current) return;
@@ -337,7 +395,7 @@ export default function ChatPage() {
       id: Date.now().toString(),
       player: selectedPlayer,
       content: isPromotion
-        ? `Player 2 has been promoted to ${newRank}`
+        ? `sub has been promoted to ${newRank}`
         : `Goddess has been demoted sub to ${newRank}`,
       timestamp: Date.now(),
       type: 'rank-change',
@@ -372,7 +430,16 @@ export default function ChatPage() {
 
     // Emit typing event
     if (socketRef.current && e.target.value.length > 0) {
-      socketRef.current.emit('typing', selectedPlayer);
+      // Check if the input contains @Lexi or @lexi
+      const containsLexiMention = /@lexi/i.test(e.target.value);
+      // Check if the input contains @Sumi or @sumi
+      const containsSumiMention = /@sumi/i.test(e.target.value);
+
+      socketRef.current.emit('typing', {
+        player: selectedPlayer,
+        forLexi: containsLexiMention,
+        forSumi: containsSumiMention
+      });
 
       // Clear existing timeout
       if (typingTimeoutRef.current) {
@@ -411,83 +478,19 @@ export default function ChatPage() {
     if (lexiResponding) {
       return 'Lexi is responding... Please wait.';
     }
-    return 'Type a message... (use @Lexi to summon the goddess)';
+    if (sumiResponding) {
+      return 'Sumi is responding... Please wait.';
+    }
+    return 'Type a message...';
   };
 
-  if (!selectedPlayer) {
-    return (
-      <main className="min-h-screen flex flex-col items-center justify-center p-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="w-full max-w-2xl"
-        >
-          <h1 className="text-4xl md:text-5xl font-gothic text-gothic-crimson text-glow text-center mb-12">
-            Select Your Player
-          </h1>
-
-          <div className="grid md:grid-cols-2 gap-8">
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-            >
-              <Card
-                className="candle-glow h-full cursor-pointer hover:scale-105 transition-transform"
-                onClick={() => setSelectedPlayer('Goddess')}
-              >
-                <CardHeader>
-                  <CardTitle className="text-center text-3xl">
-                    Goddess
-                  </CardTitle>
-                </CardHeader>
-              </Card>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6, delay: 0.4 }}
-            >
-              <Card
-                className="candle-glow h-full cursor-pointer hover:scale-105 transition-transform"
-                onClick={() => setSelectedPlayer('slave')}
-              >
-                <CardHeader>
-                  <CardTitle className="text-center text-3xl">
-                    {slaveRank}
-                  </CardTitle>
-                </CardHeader>
-              </Card>
-            </motion.div>
-          </div>
-
-          <div className="flex justify-center mt-8">
-            <Button
-              onClick={() => router.push('/')}
-              variant="outline"
-              className="gap-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Home
-            </Button>
-          </div>
-
-          {/* Decorative candles */}
-          <div className="flex gap-4 justify-center mt-12">
-            {[...Array(5)].map((_, i) => (
-              <div
-                key={i}
-                className="w-2 h-8 bg-gothic-bloodRed rounded-full animate-candle-flicker candle-glow"
-                style={{ animationDelay: `${i * 0.2}s` }}
-              />
-            ))}
-          </div>
-        </motion.div>
-      </main>
-    );
-  }
+  // Helper to get display name for a player
+  const getDisplayName = (player: string) => {
+    if (player === 'Goddess') return 'Goddess';
+    if (player === 'Lexi') return 'Lexi';
+    if (player === 'Sumi') return 'Sumi';
+    return slaveRank;
+  };
 
   return (
     <main className="min-h-screen flex flex-col p-4 md:p-8">
@@ -500,17 +503,8 @@ export default function ChatPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-4">
-            <Button
-              onClick={() => setSelectedPlayer(null)}
-              variant="outline"
-              size="sm"
-              className="gap-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Change Player
-            </Button>
             <h1 className="text-2xl md:text-3xl font-gothic text-gothic-crimson text-glow">
-              Chat Room - {selectedPlayer === 'Goddess' ? 'Goddess' : slaveRank}
+              Chat Room - {getDisplayName(selectedPlayer)}
             </h1>
           </div>
           <div className="flex items-center gap-4">
@@ -518,10 +512,10 @@ export default function ChatPage() {
             <div className={`flex items-center gap-2 ${otherPlayerOnline ? 'text-green-500' : 'text-gothic-bone/40'}`}>
               <div className={`w-2 h-2 rounded-full ${otherPlayerOnline ? 'bg-green-500 animate-pulse' : 'bg-gothic-bone/40'}`} />
               <span className="text-sm">
-                {selectedPlayer === 'Goddess' ? slaveRank : 'Goddess'} {otherPlayerOnline ? 'Online' : 'Offline'}
+                {getDisplayName(selectedPlayer === 'Goddess' ? 'slave' : 'Goddess')} {otherPlayerOnline ? 'Online' : 'Offline'}
               </span>
             </div>
-           
+
           </div>
         </div>
 
@@ -532,8 +526,20 @@ export default function ChatPage() {
               className="fixed inset-0 bg-cover bg-center bg-no-repeat opacity-20 pointer-events-none"
               style={{ backgroundImage: 'url(/queen-bg.png)' }}
             />
-            <AnimatePresence>
-              {messages.map((message) => (
+            {messagesLoading ? (
+              <div className="flex items-center justify-center h-full relative z-10">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="flex gap-2">
+                    <div className="w-3 h-3 rounded-full bg-gothic-crimson animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <div className="w-3 h-3 rounded-full bg-gothic-crimson animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <div className="w-3 h-3 rounded-full bg-gothic-crimson animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </div>
+                  <span className="text-gothic-crimson text-sm">Loading messages...</span>
+                </div>
+              </div>
+            ) : (
+              <AnimatePresence>
+                {messages.map((message) => (
                 <motion.div
                   key={message.id}
                   initial={{ opacity: 0, y: 10 }}
@@ -542,26 +548,51 @@ export default function ChatPage() {
                   className={`flex relative z-10 ${message.type === 'action' || message.type === 'rank-change' ? 'justify-center' : message.player === selectedPlayer ? 'justify-end' : 'justify-start'}`}
                 >
                   {message.type === 'ai' ? (
-                    // AI message from Lexi - special goddess styling
-                    <div className="flex flex-col items-center gap-1 max-w-[85%]">
-                      <div className="bg-gradient-to-r from-purple-900/30 via-gothic-darkRed/30 to-purple-900/30 border-2 border-purple-500/50 rounded-lg px-4 py-3 shadow-lg shadow-purple-500/20">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Crown className="w-4 h-4 text-purple-400" />
-                          <span className="text-xs font-bold text-purple-300">Lexi - Royal Black Cat Goddess</span>
+                    // AI message from Lexi or Sumi - special styling
+                    message.player === 'Lexi' ? (
+                      // Lexi's message - royal goddess styling
+                      <div className="flex flex-col items-center gap-1 max-w-[85%]">
+                        <div className="bg-gradient-to-r from-purple-900/30 via-gothic-darkRed/30 to-purple-900/30 border-2 border-purple-500/50 rounded-lg px-4 py-3 shadow-lg shadow-purple-500/20">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Crown className="w-4 h-4 text-purple-400" />
+                            <span className="text-xs font-bold text-purple-300">Lexi - Royal Black Cat Goddess</span>
+                          </div>
+                          <div className="text-gothic-bone wrap-break-word leading-relaxed">
+                            {message.content}
+                          </div>
                         </div>
-                        <div className="text-gothic-bone wrap-break-word leading-relaxed">
-                          {message.content}
+                        <div className="text-xs text-gothic-bone/40">
+                          {new Date(message.timestamp).toLocaleTimeString()}
                         </div>
                       </div>
-                      <div className="text-xs text-gothic-bone/40">
-                        {new Date(message.timestamp).toLocaleTimeString()}
+                    ) : message.player === 'Sumi' ? (
+                      // Sumi's message - loyal servant styling
+                      <div className="flex flex-col items-center gap-1 max-w-[85%]">
+                        <div className="bg-gradient-to-r from-blue-900/30 via-gothic-darkRed/30 to-blue-900/30 border-2 border-blue-500/50 rounded-lg px-4 py-3 shadow-lg shadow-blue-500/20">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Heart className="w-4 h-4 text-blue-400" />
+                            <span className="text-xs font-bold text-blue-300">Sumi - Loyal Feline Servant</span>
+                          </div>
+                          <div className="text-gothic-bone wrap-break-word leading-relaxed">
+                            {message.content}
+                          </div>
+                        </div>
+                        <div className="text-xs text-gothic-bone/40">
+                          {new Date(message.timestamp).toLocaleTimeString()}
+                        </div>
                       </div>
-                    </div>
+                    ) : null
                   ) : message.type === 'action' ? (
                     // Action message - centered with special styling
                     <div className="flex flex-col items-center gap-1 max-w-[80%]">
                       <div className="text-gothic-crimson italic text-center wrap-break-word">
-                        {message.player === 'Goddess' ? 'Goddess' : slaveRank} {renderWithMentions(message.content)}
+                        {message.player === 'System' ? (
+                          // System impact messages don't need player name prefix
+                          renderWithMentions(message.content)
+                        ) : (
+                          // Regular action messages show player name
+                          <>{getDisplayName(message.player)} {renderWithMentions(message.content)}</>
+                        )}
                       </div>
                       <div className="text-xs text-gothic-bone/40">
                         {new Date(message.timestamp).toLocaleTimeString()}
@@ -584,6 +615,104 @@ export default function ChatPage() {
                         {new Date(message.timestamp).toLocaleTimeString()}
                       </div>
                     </div>
+                  ) : message.type === 'stats' ? (
+                    // Stats message - special card display
+                    <div className="flex flex-col items-center gap-1 w-full max-w-md">
+                      <div className="bg-gradient-to-br from-gothic-darkRed/30 to-gothic-black/50 border-2 border-gothic-crimson/50 rounded-lg px-4 py-3 w-full shadow-lg">
+                        <div className="text-center mb-3">
+                          <h3 className="text-gothic-crimson font-bold text-lg">{getDisplayName('slave')} Stats</h3>
+                        </div>
+                        {(() => {
+                          try {
+                            const stats = JSON.parse(message.content);
+                            const getMoodColor = (mood: string) => {
+                              switch (mood) {
+                                case 'happy': return 'text-green-400';
+                                case 'sad': return 'text-yellow-400';
+                                case 'depressed': return 'text-orange-400';
+                                case 'miserable': return 'text-red-400';
+                                default: return 'text-gothic-bone';
+                              }
+                            };
+                            const getStatColor = (value: number) => {
+                              if (value >= 70) return 'bg-green-500';
+                              if (value >= 50) return 'bg-yellow-500';
+                              if (value >= 30) return 'bg-orange-500';
+                              return 'bg-red-500';
+                            };
+                            return (
+                              <div className="space-y-3">
+                                {/* Hunger */}
+                                <div className="space-y-1">
+                                  <div className="flex items-center justify-between text-sm">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-gothic-bone">🍽️ Hunger</span>
+                                    </div>
+                                    <span className="text-gothic-bone font-semibold">{stats.hunger}/100</span>
+                                  </div>
+                                  <div className="w-full bg-gothic-black/50 rounded-full h-2">
+                                    <div className={`h-2 rounded-full transition-all ${getStatColor(stats.hunger)}`} style={{ width: `${stats.hunger}%` }} />
+                                  </div>
+                                </div>
+
+                                {/* Water */}
+                                <div className="space-y-1">
+                                  <div className="flex items-center justify-between text-sm">
+                                    <div className="flex items-center gap-2">
+                                      <Droplet className="w-4 h-4 text-blue-400" />
+                                      <span className="text-gothic-bone">Water</span>
+                                    </div>
+                                    <span className="text-gothic-bone font-semibold">{stats.water}/100</span>
+                                  </div>
+                                  <div className="w-full bg-gothic-black/50 rounded-full h-2">
+                                    <div className={`h-2 rounded-full transition-all ${getStatColor(stats.water)}`} style={{ width: `${stats.water}%` }} />
+                                  </div>
+                                </div>
+
+                                {/* Health */}
+                                <div className="space-y-1">
+                                  <div className="flex items-center justify-between text-sm">
+                                    <div className="flex items-center gap-2">
+                                      <Activity className="w-4 h-4 text-purple-400" />
+                                      <span className="text-gothic-bone">Health</span>
+                                    </div>
+                                    <span className="text-gothic-bone font-semibold">{stats.health}/100</span>
+                                  </div>
+                                  <div className="w-full bg-gothic-black/50 rounded-full h-2">
+                                    <div className={`h-2 rounded-full transition-all ${getStatColor(stats.health)}`} style={{ width: `${stats.health}%` }} />
+                                  </div>
+                                </div>
+
+                                {/* Mood */}
+                                <div className="space-y-1 pt-2 border-t border-gothic-crimson/30">
+                                  <div className="flex items-center justify-between text-sm">
+                                    <div className="flex items-center gap-2">
+                                      {stats.mood === 'happy' && <Smile className="w-5 h-5 text-green-400" />}
+                                      {stats.mood === 'sad' && (
+                                        <span className="text-base">🥺</span>
+                                      )}
+                                      {stats.mood === 'depressed' && (
+                                        <span className="text-base">😔</span>
+                                      )}
+                                      {stats.mood === 'miserable' && (
+                                        <span className="text-base">😢</span>
+                                      )}
+                                      <span className="text-gothic-bone">Mood</span>
+                                    </div>
+                                    <span className={`font-semibold capitalize ${getMoodColor(stats.mood)}`}>{stats.mood}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          } catch (e) {
+                            return <div className="text-gothic-bone/60 text-sm">Error loading stats</div>;
+                          }
+                        })()}
+                      </div>
+                      <div className="text-xs text-gothic-bone/40">
+                        {new Date(message.timestamp).toLocaleTimeString()}
+                      </div>
+                    </div>
                   ) : (
                     // Regular message - chatbox bubble
                     <div className="flex flex-col gap-1 max-w-[70%]">
@@ -595,7 +724,7 @@ export default function ChatPage() {
                         }`}
                       >
                         <div className="text-xs text-gothic-bone/80 mb-1 font-semibold">
-                          {message.player === 'Goddess' ? 'Goddess' : slaveRank}
+                          {getDisplayName(message.player)}
                         </div>
                         <div className="text-gothic-bone wrap-break-word">
                           {message.content}
@@ -608,13 +737,14 @@ export default function ChatPage() {
                   )}
                 </motion.div>
               ))}
-            </AnimatePresence>
+              </AnimatePresence>
+            )}
             <div ref={messagesEndRef} className="relative z-10" />
           </CardContent>
 
           {/* Typing indicator - fixed at bottom of messages */}
           <AnimatePresence>
-            {(otherPlayerTyping || lexiTyping) && (
+            {(otherPlayerTyping || lexiTyping || sumiTyping) && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
@@ -623,19 +753,49 @@ export default function ChatPage() {
               >
                 <div className="flex items-center gap-2 text-xs text-gothic-bone/60">
                   <div className="flex gap-1">
-                    <div className={`w-1.5 h-1.5 rounded-full animate-bounce ${lexiTyping ? 'bg-purple-400' : 'bg-gothic-crimson'}`} style={{ animationDelay: '0ms' }} />
-                    <div className={`w-1.5 h-1.5 rounded-full animate-bounce ${lexiTyping ? 'bg-purple-400' : 'bg-gothic-crimson'}`} style={{ animationDelay: '150ms' }} />
-                    <div className={`w-1.5 h-1.5 rounded-full animate-bounce ${lexiTyping ? 'bg-purple-400' : 'bg-gothic-crimson'}`} style={{ animationDelay: '300ms' }} />
+                    <div className={`w-1.5 h-1.5 rounded-full animate-bounce ${lexiTyping ? 'bg-purple-400' : sumiTyping ? 'bg-blue-400' : 'bg-gothic-crimson'}`} style={{ animationDelay: '0ms' }} />
+                    <div className={`w-1.5 h-1.5 rounded-full animate-bounce ${lexiTyping ? 'bg-purple-400' : sumiTyping ? 'bg-blue-400' : 'bg-gothic-crimson'}`} style={{ animationDelay: '150ms' }} />
+                    <div className={`w-1.5 h-1.5 rounded-full animate-bounce ${lexiTyping ? 'bg-purple-400' : sumiTyping ? 'bg-blue-400' : 'bg-gothic-crimson'}`} style={{ animationDelay: '300ms' }} />
                   </div>
-                  <span className={lexiTyping ? 'text-purple-300' : ''}>
+                  <span className={lexiTyping ? 'text-purple-300' : sumiTyping ? 'text-blue-300' : ''}>
                     {lexiTyping ? (
                       <span className="flex items-center gap-1">
                         <Crown className="w-3 h-3" />
                         Lexi is typing...
                       </span>
+                    ) : sumiTyping ? (
+                      <span className="flex items-center gap-1">
+                        <Heart className="w-3 h-3" />
+                        Sumi is typing...
+                      </span>
                     ) : (
-                      `${selectedPlayer === 'Goddess' ? slaveRank : 'Goddess'} is typing...`
+                      `${getDisplayName(selectedPlayer === 'Goddess' ? 'slave' : 'Goddess')} is ${otherPlayerTypingForLexi ? 'typing for Lexi...' : 'typing...'}`
                     )}
+                  </span>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Action processing indicator */}
+          <AnimatePresence>
+            {actionProcessing.processing && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="px-4 py-2 border-t border-gothic-darkRed/50 bg-gothic-darkRed/10"
+              >
+                <div className="flex items-center gap-2 text-xs text-gothic-bone/70">
+                  <div className="flex gap-1">
+                    <div className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <div className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <div className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </div>
+                  <span className="text-yellow-400">
+                    {actionProcessing.player === 'Goddess'
+                      ? 'AI is analyzing action and calculating stat changes...'
+                      : 'AI is analyzing action based on current stats...'}
                   </span>
                 </div>
               </motion.div>
@@ -651,7 +811,7 @@ export default function ChatPage() {
                 variant="outline"
                 size="sm"
                 className="gap-2"
-                disabled={lexiResponding}
+                disabled={lexiResponding || sumiResponding}
               >
                 <Zap className="w-4 h-4" />
                 Send Action
@@ -663,7 +823,7 @@ export default function ChatPage() {
                   variant="outline"
                   size="sm"
                   className="gap-2"
-                  disabled={lexiResponding}
+                  disabled={lexiResponding || sumiResponding}
                 >
                   <Crown className="w-4 h-4" />
                   Change Rank
@@ -702,12 +862,12 @@ export default function ChatPage() {
                 onChange={handleInputChange}
                 onKeyPress={handleKeyPress}
                 placeholder={getPlaceholder()}
-                disabled={lexiResponding}
+                disabled={lexiResponding || sumiResponding}
                 className="flex-1 bg-gothic-black border border-gothic-darkRed rounded-md px-4 py-2 text-gothic-bone placeholder:text-gothic-bone/40 focus:outline-none focus:border-gothic-crimson disabled:opacity-50 disabled:cursor-not-allowed"
               />
               <Button
                 onClick={handleSendMessage}
-                disabled={!inputValue.trim() || lexiResponding}
+                disabled={!inputValue.trim() || lexiResponding || sumiResponding}
                 className="gap-2"
               >
                 <Send className="w-4 h-4" />

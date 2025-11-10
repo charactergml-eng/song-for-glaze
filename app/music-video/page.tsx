@@ -2,11 +2,8 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { motion } from "framer-motion";
-import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 
 export default function MusicVideoPage() {
-  const router = useRouter();
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center p-8">
@@ -16,14 +13,6 @@ export default function MusicVideoPage() {
         transition={{ duration: 0.6 }}
         className="w-full max-w-4xl"
       >
-        <button
-          onClick={() => router.push('/')}
-          className="mb-8 flex items-center gap-2 text-gothic-crimson hover:text-gothic-bloodRed transition-colors"
-        >
-          <ArrowLeft size={20} />
-          Back to Home
-        </button>
-
         <Card className="candle-glow">
           <CardHeader>
             <CardTitle className="text-center text-3xl font-gothic text-gothic-crimson text-glow">

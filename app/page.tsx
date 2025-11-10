@@ -1,16 +1,20 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
+import { useAuth } from "@/lib/auth-context";
+import { LogOut } from "lucide-react";
 
 export default function Home() {
   const router = useRouter();
+  const { user, isLoading, logout } = useAuth();
   const [slaveRank, setSlaveRank] = useState<string>("slave");
   const [kingdomRules, setKingdomRules] = useState<string>("");
 
-  // Load rank from blob on mount
+  // Load rank from blob on mount - MUST be before conditional returns
   useEffect(() => {
     const loadRank = async () => {
       try {
@@ -26,7 +30,7 @@ export default function Home() {
     loadRank();
   }, []);
 
-  // Load rules on mount
+  // Load rules on mount - MUST be before conditional returns
   useEffect(() => {
     const loadRules = async () => {
       try {
@@ -44,17 +48,44 @@ export default function Home() {
     loadRules();
   }, []);
 
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return (
+      <main className="min-h-screen flex items-center justify-center">
+        <div className="text-gothic-crimson text-glow">Loading...</div>
+      </main>
+    );
+  }
+
+  // Redirect will be handled by AuthProvider, but we can show nothing while redirecting
+  if (!user) {
+    return null;
+  }
+
   return (
     <main className="min-h-screen flex flex-col items-center justify-center p-8">
+      {/* Logout button in same position as BackButton */}
+      <div className="absolute top-6 left-6 z-50">
+        <Button
+          onClick={logout}
+          variant="outline"
+          size="sm"
+          className="gap-2 bg-gothic-black/80 backdrop-blur-sm border-gothic-darkRed shadow-lg hover:bg-gothic-black/90"
+        >
+          <LogOut className="w-4 h-4" />
+          Logout
+        </Button>
+      </div>
+
       <h1 className="text-4xl md:text-5xl font-gothic text-gothic-crimson text-glow text-center mb-4">Welcome to Goddess Batoul's Kingdom</h1>
       <div className="text-center mb-8">
         <p className="text-gothic-bone/80 text-lg">
-          and under her command: <span className="text-gothic-crimson font-bold">{slaveRank}</span>
+          Logged in as: <span className="text-gothic-crimson font-bold">{user.role === 'Goddess' ? 'Goddess' : slaveRank}</span>
         </p>
       </div>
 
       {/* Kingdom Rules Display */}
-      {kingdomRules && (
+      {/* {kingdomRules && (
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -76,7 +107,7 @@ export default function Home() {
             </CardContent>
           </Card>
         </motion.div>
-      )}
+      )} */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -97,19 +128,19 @@ export default function Home() {
             <Card className="candle-glow h-full cursor-pointer hover:scale-105 transition-transform" onClick={() => router.push('/affirmations')}>
               <CardHeader>
                 <CardTitle className="text-center text-2xl">
-                  Glazing/Treat
+                 🧎🏻/👸🏻
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-center text-muted-foreground">
-                  Start your day with a glaze or treat
+                  Glazing/Treat
                 </p>
               </CardContent>
             </Card>
           </motion.div>
 
           {/* Song Idea Card */}
-          <motion.div
+          {/* <motion.div
             initial={{ opacity: 0, x: 0 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6, delay: 0.4 }}
@@ -126,7 +157,7 @@ export default function Home() {
                 </p>
               </CardContent>
             </Card>
-          </motion.div>
+          </motion.div> */}
 
           {/* Music Video Card */}
           <motion.div
@@ -137,12 +168,12 @@ export default function Home() {
             <Card className="candle-glow h-full cursor-pointer hover:scale-105 transition-transform" onClick={() => router.push('/music-video')}>
               <CardHeader>
                 <CardTitle className="text-center text-2xl">
-                  Music Video Sneak Peak
+                  🎵
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-center text-muted-foreground">
-                  Watch the exclusive music video
+                  Music Video
                 </p>
               </CardContent>
             </Card>
@@ -157,7 +188,7 @@ export default function Home() {
             <Card className="candle-glow h-full cursor-pointer hover:scale-105 transition-transform" onClick={() => router.push('/chat')}>
               <CardHeader>
                 <CardTitle className="text-center text-2xl">
-                  Real-Time Chat
+                  💬
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -177,12 +208,12 @@ export default function Home() {
             <Card className="candle-glow h-full cursor-pointer hover:scale-105 transition-transform" onClick={() => router.push('/kingdom-rules')}>
               <CardHeader>
                 <CardTitle className="text-center text-2xl">
-                  Kingdom Rules
+                  📜
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-center text-muted-foreground">
-                  Set the kingdom rules
+                  Kingdom Rules
                 </p>
               </CardContent>
             </Card>

@@ -5,13 +5,41 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/lib/auth-context";
 
 export default function KingdomRules() {
   const router = useRouter();
+  const { user } = useAuth();
   const [rules, setRules] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState("");
+
+  const isGoddess = user?.role === 'Goddess';
+  const canEdit = isGoddess;
+
+  // Load existing rules when component mounts
+  useEffect(() => {
+    const loadRules = async () => {
+      try {
+        const response = await fetch('/api/kingdom-rules');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.rules) {
+            setRules(data.rules);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading rules:', error);
+        setMessage("Failed to load existing rules.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadRules();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,16 +93,23 @@ export default function KingdomRules() {
         <Card className="candle-glow">
           <CardHeader>
             <CardTitle className="text-center text-2xl">
-              Set the Kingdom Rules
+              {canEdit ? 'Set the Kingdom Rules' : 'Kingdom Rules'}
             </CardTitle>
+            {!canEdit && (
+              <p className="text-center text-sm text-muted-foreground mt-2">
+                View only - Only the Goddess can edit the Kingdom Rules
+              </p>
+            )}
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <Textarea
                 value={rules}
                 onChange={(e) => setRules(e.target.value)}
-                placeholder="Enter the kingdom rules here..."
+                placeholder={isLoading ? "Loading existing rules..." : canEdit ? "Enter the kingdom rules here..." : ""}
                 className="min-h-[200px] text-lg"
+                disabled={isLoading || !canEdit}
+                readOnly={!canEdit}
               />
 
               {message && (
@@ -88,17 +123,19 @@ export default function KingdomRules() {
                   type="button"
                   variant="outline"
                   onClick={() => router.push('/')}
-                  disabled={isSaving}
+                  disabled={isSaving || isLoading}
                 >
-                  Cancel
+                  {canEdit ? 'Cancel' : 'Back'}
                 </Button>
-                <Button
-                  type="submit"
-                  disabled={isSaving}
-                  className="w-full text-lg font-gothic"
-                >
-                  {isSaving ? 'Saving...' : 'Submit'}
-                </Button>
+                {canEdit && (
+                  <Button
+                    type="submit"
+                    disabled={isSaving || isLoading}
+                    className="w-full text-lg font-gothic"
+                  >
+                    {isSaving ? 'Saving...' : isLoading ? 'Loading...' : 'Submit'}
+                  </Button>
+                )}
               </div>
             </form>
           </CardContent>
